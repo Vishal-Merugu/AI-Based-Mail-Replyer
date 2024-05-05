@@ -1,0 +1,29 @@
+.NavigationBar {
+  height: 100px;
+  background-color: rgb(230, 108, 148);
+  display: flex;
+  /* align-items: center; */
+  /* justify-content: space-evenly; */
+}
+
+.navigationContainer {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  width: 100%;
+}
+
+.navOption {
+  background-color: antiquewhite;
+  width: 200px;
+  height: 20px;
+  padding: 10px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navOption:hover {
+  background-color: rgb(87, 84, 84);
+}

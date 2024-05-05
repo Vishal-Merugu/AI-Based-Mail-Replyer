@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start Server",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nodemon", "--exec", "ts-node", "src/server.ts"],
+      "skipFiles": ["<node_internals>/**"],
+      "preLaunchTask": "npm: build",
+      "program": "${workspaceFolder}/src/server.ts",
+      "restart": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "env": {
+        "PORT": "5000"
+        // "MONGO_URL": "mongodb://localhost:27017",
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start Consumer",
+      "skipFiles": ["<node_internals>/**"],
+      "program": "${workspaceFolder}/dist/consumers/index.js",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "preLaunchTask": "npm: build",
+      "env": {
+        // "MONGO_URL": "mongodb://localhost:27017",
+      }
+    }
+  ]
+}
