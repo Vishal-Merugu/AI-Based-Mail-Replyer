@@ -2,7 +2,7 @@ import React from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 
 import "./App.css";
-import { Navigator } from "./Navigator";
+import { Navigator } from "./components/Navigation";
 
 function App() {
   return (

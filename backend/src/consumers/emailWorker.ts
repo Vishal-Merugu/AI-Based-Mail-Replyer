@@ -8,7 +8,7 @@ import {
   modifyThreadAddLabel,
   sendReply,
 } from "./utils";
-import GroqChatHandler from "../groq";
+import GroqChatHandler from "../services/groqService";
 import Bluebird from "bluebird";
 
 export default function startEmailWorker(QueueBaseOptions?: QueueBaseOptions) {
