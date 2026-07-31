@@ -8,6 +8,7 @@ import {
 import { emailQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
 import { decodePubSubMessage } from "../utils/misc";
+import { logger } from "../utils/logger";
 
 export const handleEmailAuth = async (req: Request, res: Response) => {
   try {
@@ -15,7 +16,7 @@ export const handleEmailAuth = async (req: Request, res: Response) => {
     const url = generateGmailOAuthUrl({ emailId: emailId });
     res.redirect(url);
   } catch (err: any) {
-    console.log("ERROR AT /email controller", err.toString());
+    logger.error({ err }, "Error at /email controller");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -56,7 +57,7 @@ export const handleRedirect = async (req: Request, res: Response) => {
     </script>
     `);
   } catch (error) {
-    console.error("Error during OAuth redirect:", error);
+    logger.error({ error }, "Error during OAuth redirect");
     res.status(500).send("Internal Server Error");
   }
 };
@@ -66,7 +67,7 @@ export const getMessage = async (req: Request, res: Response) => {
     const notification = decodePubSubMessage(req.body);
 
     if (!notification?.emailAddress) {
-      console.log("ERROR IN /getMessage Controller: malformed Pub/Sub push payload");
+      logger.warn("Malformed Pub/Sub push payload in /getMessage controller");
       // Ack anyway so Pub/Sub doesn't keep retrying an unparseable message.
       res.status(200).send();
       return;
@@ -76,7 +77,7 @@ export const getMessage = async (req: Request, res: Response) => {
 
     res.status(200).send({ message: "Message received successfully" });
   } catch (err: any) {
-    console.log("ERROR IN /getMessage Controller", err.toString());
+    logger.error({ err }, "Error in /getMessage controller");
     res.status(200).send();
   }
 };

@@ -6,6 +6,7 @@ import { Credentials } from "google-auth-library";
 import ENV from "../utils/validateEnv";
 import MailMetaModel, { MailMeta } from "../models/mailMeta";
 import { encodeEmail } from "../utils/misc";
+import { logger } from "../utils/logger";
 
 const google = new GoogleApis();
 const googleOAuth2 = google.auth.OAuth2;
@@ -128,11 +129,11 @@ export async function fetchEmails(
 
       return Promise.resolve(messages as fetchEmailsReturn);
     } else {
-      console.log("No new messages since last checked.");
+      logger.info("No new messages since last checked.");
       return Promise.resolve([]);
     }
   } catch (error) {
-    console.error("The API returned an error: " + error);
+    logger.error({ error }, "Gmail API returned an error while fetching emails");
     return Promise.resolve([]);
   }
 }
@@ -237,7 +238,7 @@ export function setCredentialsForOAuth(
             : {}),
         }
       ).catch((err) =>
-        console.error(`Failed to persist refreshed token for ${emailId}:`, err)
+        logger.error({ err, emailId }, "Failed to persist refreshed token")
       );
     });
   }

@@ -33,6 +33,7 @@
     "google-auth-library": "^9.9.0",
     "googleapis": "^136.0.0",
     "groq-sdk": "^0.3.3",
-    "mongoose": "^7.4.1"
+    "mongoose": "^7.4.1",
+    "pino": "^10.3.1"
   }
 }

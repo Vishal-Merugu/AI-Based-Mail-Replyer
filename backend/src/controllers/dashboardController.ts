@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import MailMetaModel from "../models/mailMeta";
 import ProcessedEmailModel from "../models/processedEmail";
+import { logger } from "../utils/logger";
 
 export const listAccounts = async (_req: Request, res: Response) => {
   try {
@@ -12,7 +13,7 @@ export const listAccounts = async (_req: Request, res: Response) => {
 
     res.status(200).send(accounts);
   } catch (err: any) {
-    console.error("ERROR IN /accounts controller", err.toString());
+    logger.error({ err }, "Error in /accounts controller");
     res.status(500).send({ message: "Internal Server Error" });
   }
 };
@@ -28,7 +29,7 @@ export const listActivity = async (req: Request, res: Response) => {
 
     res.status(200).send(activity);
   } catch (err: any) {
-    console.error("ERROR IN /activity controller", err.toString());
+    logger.error({ err }, "Error in /activity controller");
     res.status(500).send({ message: "Internal Server Error" });
   }
 };

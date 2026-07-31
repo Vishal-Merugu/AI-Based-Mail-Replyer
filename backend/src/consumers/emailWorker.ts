@@ -10,13 +10,14 @@ import {
 } from "./gmailService";
 import GroqChatHandler from "../services/groqService";
 import ProcessedEmailModel from "../models/processedEmail";
+import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
 
 export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
   const emailWorker = new Worker(
     emailQueue.name,
     async (job) => {
-      console.log(`Processing email job: ${job.id}`);
+      logger.info(`Processing email job: ${job.id}`);
       const { emailAddress, historyId } = job?.data;
 
       const mailMetaDoc = await getMailMetaModel({
@@ -90,9 +91,9 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
         } catch (err: any) {
           // Isolate failures per-message so one bad thread doesn't fail
           // the whole job and cause already-replied messages to be redone.
-          console.error(
-            `Failed to process message in thread ${mailObj.threadId}:`,
-            err.toString()
+          logger.error(
+            { err, threadId: mailObj.threadId },
+            "Failed to process message"
           );
         }
       });
@@ -101,10 +102,10 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
   );
 
   emailWorker.on("completed", (job) =>
-    console.log(`Email job ${job.id} completed.`)
+    logger.info(`Email job ${job.id} completed.`)
   );
   emailWorker.on("failed", (job, err) =>
-    console.error(`Email job ${job?.id} failed with error: ${err.message}`)
+    logger.error({ err, jobId: job?.id }, "Email job failed")
   );
 
   return emailWorker;

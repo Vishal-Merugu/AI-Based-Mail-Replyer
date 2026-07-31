@@ -1,5 +1,6 @@
 import Groq from "groq-sdk";
 import ENV from "../utils/validateEnv";
+import { logger } from "../utils/logger";
 
 const GROQ_PROMPT_TEXT = `Analyze this email content and determine the category out of: "Interested", "Not Interested", or "More Information". Also, generate an appropriate response email.
 You MUST output the response purely as a valid JSON object with EXACTLY these two keys: "category" and "responseMail". Do not include any other text, markdown formatting, or explanation.
@@ -46,7 +47,10 @@ class GroqChatHandler {
         };
       }
     } catch (e) {
-      console.error("Failed to parse JSON from Groq:", e, inputString);
+      logger.error(
+        { err: e, inputString },
+        "Failed to parse JSON from Groq response"
+      );
     }
 
     return {

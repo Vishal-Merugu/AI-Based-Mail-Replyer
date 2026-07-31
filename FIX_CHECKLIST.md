@@ -30,4 +30,8 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 - [x] Fix parameter shadowing a type name in `startEmailWorker(QueueBaseOptions?: QueueBaseOptions)`.
 - [x] Standardize on async/await (remove manual `Promise.resolve()/reject()` mixed in async-style code). (`startEmailWorker` no longer wraps a fully synchronous `Worker` construction in a redundant try/catch + manual `Promise.resolve()/reject()`; it now returns the `Worker` instance directly and lets errors propagate naturally to the caller's existing `.catch`.)
 - [x] Fix naming typos (`setCredentialsForoAuth` → `setCredentialsForOAuth`, `createLabelorGetExisting` → `createLabelOrGetExisting`) and rename `consumers/utils.ts` → `consumers/gmailService.ts` to reflect it's a Gmail service layer, not generic utils.
-- [ ] Replace scattered `console.log`/`console.error` with a structured logger.
+- [x] Replace scattered `console.log`/`console.error` with a structured logger. (Added `pino` via `utils/logger.ts`; migrated every call site across controllers, consumers, and services; renamed the Express request-logging middleware from `logger` to `requestLogger` to avoid a naming collision with the new logger.)
+
+---
+
+All checklist items complete.

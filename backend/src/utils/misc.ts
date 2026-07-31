@@ -1,6 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { Buffer } from "buffer";
 
+import { logger } from "./logger";
+
 export type GmailPubSubNotification = {
   emailAddress: string;
   historyId: string;
@@ -44,8 +46,11 @@ export function encodeEmail({
     .replace(/=+$/, "");
 }
 
-export const logger = (req: Request, res: Response, next: NextFunction) => {
-  const now = new Date();
-  console.log(`${now.toISOString()} - ${req.method} ${req.path}`);
+export const requestLogger = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  logger.info({ method: req.method, path: req.path }, "incoming request");
   next();
 };
