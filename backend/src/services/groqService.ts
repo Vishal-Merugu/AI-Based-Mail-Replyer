@@ -20,7 +20,7 @@ class GroqChatHandler {
           content: messageContent,
         },
       ],
-      model: "mixtral-8x7b-32768",
+      model: ENV.GROQ_MODEL,
       response_format: { type: "json_object" },
     });
   }

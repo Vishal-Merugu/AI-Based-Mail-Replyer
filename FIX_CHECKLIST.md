@@ -9,7 +9,7 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 - [x] Fix `emailWorker.ts` to `return`/`await` the per-message processing so BullMQ completed/failed status reflects reality. (Also isolated per-message errors with try/catch so one bad thread doesn't fail the whole job.)
 - [x] Move the self-reply check (`mailObj.From.includes(emailAddress)`) before the Groq API call instead of after.
 - [x] Add a `start` script (and a script to launch `consumers/index.ts`) to `backend/package.json` — nothing currently runs the worker. (Also added `dev`/`dev:worker` nodemon scripts, using the previously-unused `nodemon` devDependency.)
-- [ ] Replace deprecated Groq model `mixtral-8x7b-32768` with a current supported model.
+- [x] Replace deprecated Groq model `mixtral-8x7b-32768` with a current supported model. (Made it configurable via `GROQ_MODEL` env var, default `llama-3.3-70b-versatile`, so future model swaps don't need a code change.)
 
 ## Priority 2 — Correctness / security hardening
 
