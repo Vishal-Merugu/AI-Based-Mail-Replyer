@@ -71,11 +71,15 @@ export async function fetchEmails(
   fetchMailProps: fetchMailProps
 ): Promise<fetchEmailsReturn> {
   try {
-    setCredentialsForoAuth(oAuth2Client, {
-      access_token: fetchMailProps.access_token,
-      refresh_token: fetchMailProps.refresh_token,
-      id_token: fetchMailProps.id_token,
-    });
+    setCredentialsForoAuth(
+      oAuth2Client,
+      {
+        access_token: fetchMailProps.access_token,
+        refresh_token: fetchMailProps.refresh_token,
+        id_token: fetchMailProps.id_token,
+      },
+      emailId
+    );
 
     const history = await listHistory(fetchMailProps.lastHistoryId);
 
@@ -162,9 +166,10 @@ export function findOneAndUpdateMailModel(
 export async function modifyThreadAddLabel(
   threadId: string,
   labelId: string,
-  creds: Credentials
+  creds: Credentials,
+  emailId?: string
 ) {
-  setCredentialsForoAuth(oAuth2Client, creds);
+  setCredentialsForoAuth(oAuth2Client, creds, emailId);
   await gmail.users.threads.modify({
     userId: "me",
     id: threadId,
@@ -184,9 +189,10 @@ export async function sendReply(
     to,
     subject,
   }: Record<string, string>,
-  creds: Credentials
+  creds: Credentials,
+  emailId?: string
 ) {
-  setCredentialsForoAuth(oAuth2Client, creds);
+  setCredentialsForoAuth(oAuth2Client, creds, emailId);
 
   const raw = encodeEmail({
     from: from,
@@ -208,16 +214,44 @@ export async function sendReply(
 
 export function setCredentialsForoAuth(
   auth: typeof oAuth2Client,
-  creds: Credentials
+  creds: Credentials,
+  emailId?: string
 ) {
-  return auth.setCredentials(creds);
+  auth.setCredentials(creds);
+
+  if (emailId) {
+    // googleapis auto-refreshes an expired access_token on the next API
+    // call and emits 'tokens' with the new value — persist it so we don't
+    // keep using a stale token (and silently fail) on subsequent jobs.
+    auth.once("tokens", (tokens) => {
+      if (!tokens.access_token) return;
+
+      findOneAndUpdateMailModel(
+        { emailID: emailId },
+        {
+          access_token: tokens.access_token,
+          ...(tokens.refresh_token
+            ? { refresh_token: tokens.refresh_token }
+            : {}),
+          ...(tokens.expiry_date
+            ? { expiry_date: new Date(tokens.expiry_date) }
+            : {}),
+        }
+      ).catch((err) =>
+        console.error(`Failed to persist refreshed token for ${emailId}:`, err)
+      );
+    });
+  }
+
+  return auth;
 }
 
 export async function createLabelorGetExisting(
   labelName: string,
-  creds: Credentials
+  creds: Credentials,
+  emailId?: string
 ): Promise<string> {
-  setCredentialsForoAuth(oAuth2Client, creds);
+  setCredentialsForoAuth(oAuth2Client, creds, emailId);
 
   const labelsRes = await gmail.users.labels.list({
     userId: "me",

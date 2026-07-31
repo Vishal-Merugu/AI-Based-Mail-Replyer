@@ -56,10 +56,16 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
 
             const labelId = await createLabelorGetExisting(
               parsedResponse.category,
-              creds
+              creds,
+              emailAddress
             );
 
-            await modifyThreadAddLabel(mailObj.threadId, labelId, creds);
+            await modifyThreadAddLabel(
+              mailObj.threadId,
+              labelId,
+              creds,
+              emailAddress
+            );
 
             await sendReply(
               {
@@ -70,7 +76,8 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
                 to: mailObj.From, //from becomes to as we giving response mail to sender
                 subject: "Re: " + mailObj.Subject,
               },
-              creds
+              creds,
+              emailAddress
             );
           } catch (err: any) {
             // Isolate failures per-message so one bad thread doesn't fail
