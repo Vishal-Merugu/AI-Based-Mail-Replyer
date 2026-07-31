@@ -1,10 +1,14 @@
 import { Queue } from "bullmq";
 import IORedis from "ioredis";
 
-const connection = new IORedis({
-  host: "127.0.0.1",
-  port: 6379,
-  maxRetriesPerRequest: 3,
+import ENV from "./utils/validateEnv";
+
+export const redisConnection = new IORedis({
+  host: ENV.REDIS_HOST,
+  port: ENV.REDIS_PORT,
+  maxRetriesPerRequest: null,
 });
 
-export const emailQueue = new Queue("emailQueue", { connection });
+export const emailQueue = new Queue("emailQueue", {
+  connection: redisConnection,
+});

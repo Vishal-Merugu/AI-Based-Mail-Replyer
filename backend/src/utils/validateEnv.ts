@@ -1,9 +1,10 @@
-import { cleanEnv } from "envalid";
-import { str, port } from "envalid/dist/validators";
+import { cleanEnv, str, port } from "envalid";
 
 export default cleanEnv(process.env, {
   PORT: port(),
   MONGO_URL: str(),
+  REDIS_HOST: str({ default: "127.0.0.1" }),
+  REDIS_PORT: port({ default: 6379 }),
   GOOGLE_CLIENT_ID: str(),
   GOOGLE_CLIENT_SECRET: str(),
   GOOGLE_REDIRECT_URI: str(),
