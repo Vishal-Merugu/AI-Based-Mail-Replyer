@@ -12,8 +12,8 @@ export const navOptions = [
     path: "/connect_email",
   },
   {
-    title: "Send Emails",
-    path: "/send_emails",
+    title: "Dashboard",
+    path: "/dashboard",
   },
 ];
 

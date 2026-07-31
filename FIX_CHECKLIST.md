@@ -20,9 +20,9 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 
 ## Priority 3 — Frontend
 
-- [ ] Replace placeholder routes (`<div>Hello1</div>` / `<div>Hello2</div>`) with real pages.
-- [ ] Remove hardcoded developer email/URL in "Connect Gmail" button; make it configurable (env-based API base URL, user-entered email).
-- [ ] Add a basic dashboard showing connected accounts / processed email activity.
+- [x] Replace placeholder routes (`<div>Hello1</div>` / `<div>Hello2</div>`) with real pages (`Home`, `ConnectEmail`, `Dashboard`).
+- [x] Remove hardcoded developer email/URL in "Connect Gmail" button; make it configurable (`REACT_APP_API_URL` env var, user-entered email input).
+- [x] Add a basic dashboard showing connected accounts / processed email activity. (New backend `GET /accounts` + `GET /activity` endpoints, a `ProcessedEmail` log written after each successful reply, and a `Dashboard` page rendering it. Verified in browser: nav, Home, Connect Email, and Dashboard all render correctly with proper empty states when the API is unreachable.)
 
 ## Priority 4 — Style / patterns (cosmetic, do last)
 
