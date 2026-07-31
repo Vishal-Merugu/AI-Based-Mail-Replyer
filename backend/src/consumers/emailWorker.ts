@@ -9,6 +9,7 @@ import {
   sendReply,
 } from "./utils";
 import GroqChatHandler from "../services/groqService";
+import ProcessedEmailModel from "../models/processedEmail";
 import Bluebird from "bluebird";
 
 export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
@@ -79,6 +80,14 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
               creds,
               emailAddress
             );
+
+            await ProcessedEmailModel.create({
+              emailID: emailAddress,
+              threadId: mailObj.threadId,
+              subject: mailObj.Subject,
+              from: mailObj.From,
+              category: parsedResponse.category,
+            });
           } catch (err: any) {
             // Isolate failures per-message so one bad thread doesn't fail
             // the whole job and cause already-replied messages to be redone.
