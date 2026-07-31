@@ -1,4 +1,5 @@
 import { InferSchemaType, Schema, model } from "mongoose";
+import { encrypt, decrypt, isEncrypted } from "../utils/crypto";
 
 const mailMetaSchema = new Schema(
   {
@@ -13,6 +14,51 @@ const mailMetaSchema = new Schema(
     lastHistoryId: String,
   },
   { timestamps: true }
+);
+
+// OAuth tokens grant full Gmail read/send access — never store them in
+// plaintext. These hooks make encryption/decryption transparent to callers.
+const SECRET_FIELDS = ["access_token", "refresh_token", "id_token"] as const;
+
+function encryptSecretFields(target: Record<string, any> | undefined | null) {
+  if (!target) return;
+  for (const field of SECRET_FIELDS) {
+    if (target[field] && !isEncrypted(target[field])) {
+      target[field] = encrypt(target[field]);
+    }
+  }
+}
+
+function decryptSecretFields(doc: any) {
+  if (!doc) return;
+  for (const field of SECRET_FIELDS) {
+    if (isEncrypted(doc[field])) {
+      doc[field] = decrypt(doc[field]);
+    }
+  }
+}
+
+mailMetaSchema.pre("save", function (next) {
+  encryptSecretFields(this as unknown as Record<string, any>);
+  next();
+});
+
+mailMetaSchema.pre("findOneAndUpdate", function (next) {
+  const update = this.getUpdate() as Record<string, any>;
+  encryptSecretFields(update);
+  encryptSecretFields(update?.$set);
+  next();
+});
+
+mailMetaSchema.post(
+  ["find", "findOne", "findOneAndUpdate"],
+  function (result) {
+    if (Array.isArray(result)) {
+      result.forEach(decryptSecretFields);
+    } else {
+      decryptSecretFields(result);
+    }
+  }
 );
 
 export type MailMeta = InferSchemaType<typeof mailMetaSchema>;

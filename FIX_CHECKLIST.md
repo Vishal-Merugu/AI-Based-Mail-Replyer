@@ -16,7 +16,7 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 - [x] Dedupe Mongo/Redis connection setup (remove double `mongoose.connect` in `consumers/index.ts`; share one Redis connection config instead of two hardcoded, inconsistent copies).
 - [x] Persist refreshed OAuth tokens back to `MailMetaModel` instead of only ever using the originally stored `access_token`. (Listens for the googleapis client's `tokens` event on each authenticated call and writes the refreshed access/refresh token + expiry back to Mongo.)
 - [x] Add CORS middleware to the Express app for the separate React client. (Origin configurable via `CLIENT_URL` env var, default `http://localhost:3000`.)
-- [ ] Stop storing OAuth access/refresh tokens in plaintext in Mongo — encrypt at rest.
+- [x] Stop storing OAuth access/refresh tokens in plaintext in Mongo — encrypt at rest. (AES-256-GCM via `utils/crypto.ts`, wired transparently through Mongoose `pre('save')`/`pre('findOneAndUpdate')`/post-find hooks on `mailMeta.ts` so no call site had to change. Key comes from `TOKEN_ENCRYPTION_KEY`.)
 
 ## Priority 3 — Frontend
 
