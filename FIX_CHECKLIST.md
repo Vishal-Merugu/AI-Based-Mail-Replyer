@@ -4,7 +4,7 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 
 ## Priority 1 — Core pipeline is non-functional
 
-- [ ] Fix `getMessage`/`readRequestBody` double body-read bug (`backend/src/controllers/emailController.ts`, `backend/src/utils/misc.ts`) — the Pub/Sub push body is consumed by `express.json()` then re-read manually, so it always ends up empty. Decode the Pub/Sub envelope (`message.data`, base64) properly.
+- [x] Fix `getMessage`/`readRequestBody` double body-read bug (`backend/src/controllers/emailController.ts`, `backend/src/utils/misc.ts`) — the Pub/Sub push body is consumed by `express.json()` then re-read manually, so it always ends up empty. Decode the Pub/Sub envelope (`message.data`, base64) properly.
 - [ ] Load env vars: add `dotenv.config()` at process entry points (`server.ts`, `consumers/index.ts`), commit a `.env.example`.
 - [ ] Fix `emailWorker.ts` to `return`/`await` the per-message processing so BullMQ completed/failed status reflects reality.
 - [ ] Move the self-reply check (`mailObj.From.includes(emailAddress)`) before the Groq API call instead of after.

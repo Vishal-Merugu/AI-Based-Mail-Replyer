@@ -7,7 +7,7 @@ import {
 } from "../utils/OAuthMethods";
 import { emailQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
-import { readRequestBody } from "../utils/misc";
+import { decodePubSubMessage } from "../utils/misc";
 
 export const handleEmailAuth = async (req: Request, res: Response) => {
   try {
@@ -63,10 +63,16 @@ export const handleRedirect = async (req: Request, res: Response) => {
 
 export const getMessage = async (req: Request, res: Response) => {
   try {
-    const body = await readRequestBody(req);
-    req.body = body;
+    const notification = decodePubSubMessage(req.body);
 
-    await emailQueue.add("sendEmailJob", body);
+    if (!notification?.emailAddress) {
+      console.log("ERROR IN /getMessage Controller: malformed Pub/Sub push payload");
+      // Ack anyway so Pub/Sub doesn't keep retrying an unparseable message.
+      res.status(200).send();
+      return;
+    }
+
+    await emailQueue.add("sendEmailJob", notification);
 
     res.status(200).send({ message: "Message received successfully" });
   } catch (err: any) {

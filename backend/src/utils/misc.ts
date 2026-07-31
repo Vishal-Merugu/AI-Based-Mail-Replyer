@@ -1,22 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import { Buffer } from "buffer";
 
-export const readRequestBody = (req: Request): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    let body: Buffer[] = [];
-    req
-      .on("data", (chunk: Buffer) => {
-        body.push(chunk);
-      })
-      .on("end", () => {
-        const bodyString = Buffer.concat(body).toString();
-        resolve(JSON.parse(bodyString));
-      })
-      .on("error", (err) => {
-        reject(err);
-      });
-  });
+export type GmailPubSubNotification = {
+  emailAddress: string;
+  historyId: string;
 };
+
+// Google Cloud Pub/Sub push payload shape:
+// { message: { data: "<base64 JSON>", messageId, publishTime }, subscription }
+export function decodePubSubMessage(
+  body: any
+): GmailPubSubNotification | undefined {
+  const data = body?.message?.data;
+  if (!data) return undefined;
+
+  const decoded = Buffer.from(data, "base64").toString("utf-8");
+  return JSON.parse(decoded);
+}
 
 export function encodeEmail({
   from,
