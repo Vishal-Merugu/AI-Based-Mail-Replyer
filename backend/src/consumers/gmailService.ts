@@ -70,7 +70,7 @@ export async function fetchEmails(
   fetchMailProps: fetchMailProps
 ): Promise<fetchEmailsReturn> {
   try {
-    setCredentialsForoAuth(
+    setCredentialsForOAuth(
       oAuth2Client,
       {
         access_token: fetchMailProps.access_token,
@@ -168,7 +168,7 @@ export async function modifyThreadAddLabel(
   creds: Credentials,
   emailId?: string
 ) {
-  setCredentialsForoAuth(oAuth2Client, creds, emailId);
+  setCredentialsForOAuth(oAuth2Client, creds, emailId);
   await gmail.users.threads.modify({
     userId: "me",
     id: threadId,
@@ -191,7 +191,7 @@ export async function sendReply(
   creds: Credentials,
   emailId?: string
 ) {
-  setCredentialsForoAuth(oAuth2Client, creds, emailId);
+  setCredentialsForOAuth(oAuth2Client, creds, emailId);
 
   const raw = encodeEmail({
     from: from,
@@ -211,7 +211,7 @@ export async function sendReply(
   });
 }
 
-export function setCredentialsForoAuth(
+export function setCredentialsForOAuth(
   auth: typeof oAuth2Client,
   creds: Credentials,
   emailId?: string
@@ -245,12 +245,12 @@ export function setCredentialsForoAuth(
   return auth;
 }
 
-export async function createLabelorGetExisting(
+export async function createLabelOrGetExisting(
   labelName: string,
   creds: Credentials,
   emailId?: string
 ): Promise<string> {
-  setCredentialsForoAuth(oAuth2Client, creds, emailId);
+  setCredentialsForOAuth(oAuth2Client, creds, emailId);
 
   const labelsRes = await gmail.users.labels.list({
     userId: "me",

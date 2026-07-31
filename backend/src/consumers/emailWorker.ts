@@ -2,12 +2,12 @@ import { QueueBaseOptions, Worker } from "bullmq";
 
 import { emailQueue } from "../queue";
 import {
-  createLabelorGetExisting,
+  createLabelOrGetExisting,
   fetchEmails,
   getMailMetaModel,
   modifyThreadAddLabel,
   sendReply,
-} from "./utils";
+} from "./gmailService";
 import GroqChatHandler from "../services/groqService";
 import ProcessedEmailModel from "../models/processedEmail";
 import Bluebird from "bluebird";
@@ -54,7 +54,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             refresh_token,
           };
 
-          const labelId = await createLabelorGetExisting(
+          const labelId = await createLabelOrGetExisting(
             parsedResponse.category,
             creds,
             emailAddress
