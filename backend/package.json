@@ -5,7 +5,11 @@
   "main": "dist/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf dist && tsc"
+    "build": "rm -rf dist && tsc",
+    "start": "node dist/server.js",
+    "worker": "node dist/consumers/index.js",
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "dev:worker": "nodemon --exec ts-node src/consumers/index.ts"
   },
   "author": "Vishal M",
   "license": "ISC",
