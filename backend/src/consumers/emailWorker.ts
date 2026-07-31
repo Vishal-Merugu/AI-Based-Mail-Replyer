@@ -11,7 +11,7 @@ import {
 import GroqChatHandler from "../services/groqService";
 import Bluebird from "bluebird";
 
-export default function startEmailWorker(QueueBaseOptions?: QueueBaseOptions) {
+export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
   try {
     const emailWorker = new Worker(
       emailQueue.name,
@@ -38,44 +38,51 @@ export default function startEmailWorker(QueueBaseOptions?: QueueBaseOptions) {
 
         const Groq = new GroqChatHandler();
 
-        Bluebird.mapSeries(mailObjects, async (mailObj) => {
-          const AIResponse = await Groq.analyzeEmailContent(
-            mailObj.mailContent
-          );
+        await Bluebird.mapSeries(mailObjects, async (mailObj) => {
+          if (mailObj.From.includes(emailAddress)) return;
 
-          if (mailObj.From.includes(emailAddress)) return Promise.resolve();
+          try {
+            const AIResponse = await Groq.analyzeEmailContent(
+              mailObj.mailContent
+            );
 
-          const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+            const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
 
-          const creds = {
-            access_token,
-            id_token,
-            refresh_token,
-          };
+            const creds = {
+              access_token,
+              id_token,
+              refresh_token,
+            };
 
-          const labelId = await createLabelorGetExisting(
-            parsedResponse.category,
-            creds
-          );
+            const labelId = await createLabelorGetExisting(
+              parsedResponse.category,
+              creds
+            );
 
-          await modifyThreadAddLabel(mailObj.threadId, labelId, creds);
+            await modifyThreadAddLabel(mailObj.threadId, labelId, creds);
 
-          await sendReply(
-            {
-              from: mailObj.To,
-              threadId: mailObj.threadId,
-              messageId: mailObj["Message-Id"],
-              mailContent: parsedResponse.responseMail,
-              to: mailObj.From, //from becomes to as we giving response mail to sender
-              subject: "Re: " + mailObj.Subject,
-            },
-            creds
-          );
-
-          return Promise.resolve();
+            await sendReply(
+              {
+                from: mailObj.To,
+                threadId: mailObj.threadId,
+                messageId: mailObj["Message-Id"],
+                mailContent: parsedResponse.responseMail,
+                to: mailObj.From, //from becomes to as we giving response mail to sender
+                subject: "Re: " + mailObj.Subject,
+              },
+              creds
+            );
+          } catch (err: any) {
+            // Isolate failures per-message so one bad thread doesn't fail
+            // the whole job and cause already-replied messages to be redone.
+            console.error(
+              `Failed to process message in thread ${mailObj.threadId}:`,
+              err.toString()
+            );
+          }
         });
       },
-      QueueBaseOptions
+      workerOptions
     );
 
     emailWorker.on("completed", (job) =>

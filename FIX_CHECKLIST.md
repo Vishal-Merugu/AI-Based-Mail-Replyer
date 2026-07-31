@@ -6,8 +6,8 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 
 - [x] Fix `getMessage`/`readRequestBody` double body-read bug (`backend/src/controllers/emailController.ts`, `backend/src/utils/misc.ts`) — the Pub/Sub push body is consumed by `express.json()` then re-read manually, so it always ends up empty. Decode the Pub/Sub envelope (`message.data`, base64) properly.
 - [x] Load env vars: add `dotenv.config()` at process entry points (`server.ts`, `consumers/index.ts`), commit a `.env.example`.
-- [ ] Fix `emailWorker.ts` to `return`/`await` the per-message processing so BullMQ completed/failed status reflects reality.
-- [ ] Move the self-reply check (`mailObj.From.includes(emailAddress)`) before the Groq API call instead of after.
+- [x] Fix `emailWorker.ts` to `return`/`await` the per-message processing so BullMQ completed/failed status reflects reality. (Also isolated per-message errors with try/catch so one bad thread doesn't fail the whole job.)
+- [x] Move the self-reply check (`mailObj.From.includes(emailAddress)`) before the Groq API call instead of after.
 - [ ] Add a `start` script (and a script to launch `consumers/index.ts`) to `backend/package.json` — nothing currently runs the worker.
 - [ ] Replace deprecated Groq model `mixtral-8x7b-32768` with a current supported model.
 
@@ -27,7 +27,7 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 ## Priority 4 — Style / patterns (cosmetic, do last)
 
 - [ ] Stop importing from package internals (`node_modules/google-auth-library/build/...`, `envalid/dist/validators`) — use public exports.
-- [ ] Fix parameter shadowing a type name in `startEmailWorker(QueueBaseOptions?: QueueBaseOptions)`.
+- [x] Fix parameter shadowing a type name in `startEmailWorker(QueueBaseOptions?: QueueBaseOptions)`.
 - [ ] Standardize on async/await (remove manual `Promise.resolve()/reject()` mixed in async-style code).
 - [ ] Fix naming typos (`setCredentialsForoAuth`, `createLabelorGetExisting`) and rename `consumers/utils.ts` to reflect it's a Gmail service layer, not generic utils.
 - [ ] Replace scattered `console.log`/`console.error` with a structured logger.
