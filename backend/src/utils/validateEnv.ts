@@ -11,4 +11,5 @@ export default cleanEnv(process.env, {
   GC_TOPIC_NAME: str(),
   GROQ_API_KEY: str(),
   GROQ_MODEL: str({ default: "llama-3.3-70b-versatile" }),
+  CLIENT_URL: str({ default: "http://localhost:3000" }),
 });
