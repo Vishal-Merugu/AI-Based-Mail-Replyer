@@ -13,104 +13,99 @@ import ProcessedEmailModel from "../models/processedEmail";
 import Bluebird from "bluebird";
 
 export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
-  try {
-    const emailWorker = new Worker(
-      emailQueue.name,
-      async (job) => {
-        console.log(`Processing email job: ${job.id}`);
-        const { emailAddress, historyId } = job?.data;
+  const emailWorker = new Worker(
+    emailQueue.name,
+    async (job) => {
+      console.log(`Processing email job: ${job.id}`);
+      const { emailAddress, historyId } = job?.data;
 
-        const mailMetaDoc = await getMailMetaModel({
-          emailID: emailAddress,
-        });
+      const mailMetaDoc = await getMailMetaModel({
+        emailID: emailAddress,
+      });
 
-        if (!mailMetaDoc || !mailMetaDoc.access_token)
-          throw Error("MAIL with acces token was not registered");
+      if (!mailMetaDoc || !mailMetaDoc.access_token)
+        throw Error("MAIL with acces token was not registered");
 
-        const { access_token, id_token, refresh_token, lastHistoryId } =
-          mailMetaDoc;
+      const { access_token, id_token, refresh_token, lastHistoryId } =
+        mailMetaDoc;
 
-        const mailObjects = await fetchEmails(emailAddress, {
-          lastHistoryId: lastHistoryId ?? historyId,
-          access_token,
-          id_token,
-          refresh_token,
-        });
+      const mailObjects = await fetchEmails(emailAddress, {
+        lastHistoryId: lastHistoryId ?? historyId,
+        access_token,
+        id_token,
+        refresh_token,
+      });
 
-        const Groq = new GroqChatHandler();
+      const Groq = new GroqChatHandler();
 
-        await Bluebird.mapSeries(mailObjects, async (mailObj) => {
-          if (mailObj.From.includes(emailAddress)) return;
+      await Bluebird.mapSeries(mailObjects, async (mailObj) => {
+        if (mailObj.From.includes(emailAddress)) return;
 
-          try {
-            const AIResponse = await Groq.analyzeEmailContent(
-              mailObj.mailContent
-            );
+        try {
+          const AIResponse = await Groq.analyzeEmailContent(
+            mailObj.mailContent
+          );
 
-            const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+          const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
 
-            const creds = {
-              access_token,
-              id_token,
-              refresh_token,
-            };
+          const creds = {
+            access_token,
+            id_token,
+            refresh_token,
+          };
 
-            const labelId = await createLabelorGetExisting(
-              parsedResponse.category,
-              creds,
-              emailAddress
-            );
+          const labelId = await createLabelorGetExisting(
+            parsedResponse.category,
+            creds,
+            emailAddress
+          );
 
-            await modifyThreadAddLabel(
-              mailObj.threadId,
-              labelId,
-              creds,
-              emailAddress
-            );
+          await modifyThreadAddLabel(
+            mailObj.threadId,
+            labelId,
+            creds,
+            emailAddress
+          );
 
-            await sendReply(
-              {
-                from: mailObj.To,
-                threadId: mailObj.threadId,
-                messageId: mailObj["Message-Id"],
-                mailContent: parsedResponse.responseMail,
-                to: mailObj.From, //from becomes to as we giving response mail to sender
-                subject: "Re: " + mailObj.Subject,
-              },
-              creds,
-              emailAddress
-            );
-
-            await ProcessedEmailModel.create({
-              emailID: emailAddress,
+          await sendReply(
+            {
+              from: mailObj.To,
               threadId: mailObj.threadId,
-              subject: mailObj.Subject,
-              from: mailObj.From,
-              category: parsedResponse.category,
-            });
-          } catch (err: any) {
-            // Isolate failures per-message so one bad thread doesn't fail
-            // the whole job and cause already-replied messages to be redone.
-            console.error(
-              `Failed to process message in thread ${mailObj.threadId}:`,
-              err.toString()
-            );
-          }
-        });
-      },
-      workerOptions
-    );
+              messageId: mailObj["Message-Id"],
+              mailContent: parsedResponse.responseMail,
+              to: mailObj.From, //from becomes to as we giving response mail to sender
+              subject: "Re: " + mailObj.Subject,
+            },
+            creds,
+            emailAddress
+          );
 
-    emailWorker.on("completed", (job) =>
-      console.log(`Email job ${job.id} completed.`)
-    );
-    emailWorker.on("failed", (job, err) =>
-      console.error(`Email job ${job?.id} failed with error: ${err.message}`)
-    );
+          await ProcessedEmailModel.create({
+            emailID: emailAddress,
+            threadId: mailObj.threadId,
+            subject: mailObj.Subject,
+            from: mailObj.From,
+            category: parsedResponse.category,
+          });
+        } catch (err: any) {
+          // Isolate failures per-message so one bad thread doesn't fail
+          // the whole job and cause already-replied messages to be redone.
+          console.error(
+            `Failed to process message in thread ${mailObj.threadId}:`,
+            err.toString()
+          );
+        }
+      });
+    },
+    workerOptions
+  );
 
-    return Promise.resolve();
-  } catch (err: any) {
-    console.log("ERROR IN EMAIL WORKER", err.toString());
-    return Promise.reject(err);
-  }
+  emailWorker.on("completed", (job) =>
+    console.log(`Email job ${job.id} completed.`)
+  );
+  emailWorker.on("failed", (job, err) =>
+    console.error(`Email job ${job?.id} failed with error: ${err.message}`)
+  );
+
+  return emailWorker;
 }

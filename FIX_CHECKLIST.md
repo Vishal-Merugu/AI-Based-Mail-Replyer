@@ -28,6 +28,6 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 
 - [x] Stop importing from package internals (`node_modules/google-auth-library/build/...`, `envalid/dist/validators`) — use public exports. (`envalid/dist/validators` was already fixed alongside the env work in Priority 1; `google-auth-library`'s `Credentials` type is now imported from the package root, added as an explicit direct dependency since it was previously only a transitive one.)
 - [x] Fix parameter shadowing a type name in `startEmailWorker(QueueBaseOptions?: QueueBaseOptions)`.
-- [ ] Standardize on async/await (remove manual `Promise.resolve()/reject()` mixed in async-style code).
+- [x] Standardize on async/await (remove manual `Promise.resolve()/reject()` mixed in async-style code). (`startEmailWorker` no longer wraps a fully synchronous `Worker` construction in a redundant try/catch + manual `Promise.resolve()/reject()`; it now returns the `Worker` instance directly and lets errors propagate naturally to the caller's existing `.catch`.)
 - [ ] Fix naming typos (`setCredentialsForoAuth`, `createLabelorGetExisting`) and rename `consumers/utils.ts` to reflect it's a Gmail service layer, not generic utils.
 - [ ] Replace scattered `console.log`/`console.error` with a structured logger.
