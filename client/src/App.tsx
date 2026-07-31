@@ -1,18 +1,15 @@
-import React from "react";
-import { BrowserRouter as Router } from "react-router-dom";
+import { BrowserRouter } from "react-router-dom";
 
-import "./App.css";
-import { Navigator } from "./components/Navigation";
+import { ColorModeProvider } from "./theme";
+import { AppShell } from "./components/layout/AppShell";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <Router>
-          <Navigator />
-        </Router>
-      </header>
-    </div>
+    <ColorModeProvider>
+      <BrowserRouter>
+        <AppShell />
+      </BrowserRouter>
+    </ColorModeProvider>
   );
 }
 
