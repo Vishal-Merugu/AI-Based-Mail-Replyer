@@ -1,6 +1,6 @@
 import { GoogleApis, gmail_v1, oauth2_v2 } from "googleapis";
 import { GaxiosPromise } from "gaxios";
-import { Credentials } from "../../node_modules/google-auth-library/build/src/auth/credentials";
+import { Credentials } from "google-auth-library";
 
 import ENV from "./validateEnv";
 

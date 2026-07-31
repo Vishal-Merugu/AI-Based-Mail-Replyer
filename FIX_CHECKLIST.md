@@ -26,7 +26,7 @@ Tracking doc for cleanup/fix pass on this repo. Check items off as they land; ea
 
 ## Priority 4 — Style / patterns (cosmetic, do last)
 
-- [ ] Stop importing from package internals (`node_modules/google-auth-library/build/...`, `envalid/dist/validators`) — use public exports.
+- [x] Stop importing from package internals (`node_modules/google-auth-library/build/...`, `envalid/dist/validators`) — use public exports. (`envalid/dist/validators` was already fixed alongside the env work in Priority 1; `google-auth-library`'s `Credentials` type is now imported from the package root, added as an explicit direct dependency since it was previously only a transitive one.)
 - [x] Fix parameter shadowing a type name in `startEmailWorker(QueueBaseOptions?: QueueBaseOptions)`.
 - [ ] Standardize on async/await (remove manual `Promise.resolve()/reject()` mixed in async-style code).
 - [ ] Fix naming typos (`setCredentialsForoAuth`, `createLabelorGetExisting`) and rename `consumers/utils.ts` to reflect it's a Gmail service layer, not generic utils.

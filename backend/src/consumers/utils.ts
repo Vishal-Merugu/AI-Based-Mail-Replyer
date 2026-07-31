@@ -1,8 +1,7 @@
 import Bluebird from "bluebird";
 import { FilterQuery, QueryOptions, UpdateQuery } from "mongoose";
 import { GoogleApis, gmail_v1 } from "googleapis";
-
-import { Credentials } from "../../node_modules/google-auth-library/build/src/auth/credentials";
+import { Credentials } from "google-auth-library";
 
 import ENV from "../utils/validateEnv";
 import MailMetaModel, { MailMeta } from "../models/mailMeta";
