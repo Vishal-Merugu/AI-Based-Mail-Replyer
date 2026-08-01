@@ -86,3 +86,25 @@ export async function fetchActivity(
   });
   return res.data;
 }
+
+export type Persona = {
+  name?: string;
+  tone?: string;
+  signature?: string;
+  extraInstructions?: string;
+};
+
+export async function fetchPersona(
+  accountId: string
+): Promise<{ emailID: string; persona: Persona }> {
+  const res = await apiClient.get(`/accounts/${accountId}/persona`);
+  return res.data;
+}
+
+export async function savePersona(
+  accountId: string,
+  persona: Persona
+): Promise<{ persona: Persona }> {
+  const res = await apiClient.put(`/accounts/${accountId}/persona`, persona);
+  return res.data;
+}

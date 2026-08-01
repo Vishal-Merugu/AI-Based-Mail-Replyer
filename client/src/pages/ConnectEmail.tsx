@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
@@ -17,11 +18,13 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 import InboxRoundedIcon from "@mui/icons-material/InboxRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import { API_URL, ConnectedAccount, fetchAccounts } from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 
 export function ConnectEmail(): JSX.Element {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -124,7 +127,21 @@ export function ConnectEmail(): JSX.Element {
           ) : (
             <List disablePadding>
               {accounts.map((account) => (
-                <ListItem key={account._id} disableGutters>
+                <ListItem
+                  key={account._id}
+                  disableGutters
+                  secondaryAction={
+                    <Button
+                      size="small"
+                      startIcon={<TuneRoundedIcon />}
+                      onClick={() =>
+                        navigate(`/accounts/${account._id}/persona`)
+                      }
+                    >
+                      Persona
+                    </Button>
+                  }
+                >
                   <ListItemAvatar>
                     <Avatar sx={{ bgcolor: "primary.main" }}>
                       {account.emailID.charAt(0).toUpperCase()}

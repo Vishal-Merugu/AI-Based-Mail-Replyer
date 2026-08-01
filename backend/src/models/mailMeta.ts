@@ -18,6 +18,12 @@ const mailMetaSchema = new Schema(
     id_token: String,
     expiry_date: Date,
     lastHistoryId: String,
+    persona: {
+      name: { type: String, default: "" },
+      tone: { type: String, default: "professional" },
+      signature: { type: String, default: "" },
+      extraInstructions: { type: String, default: "" },
+    },
   },
   { timestamps: true }
 );

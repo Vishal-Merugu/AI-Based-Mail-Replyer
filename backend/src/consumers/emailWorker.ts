@@ -27,7 +27,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
       if (!mailMetaDoc || !mailMetaDoc.access_token)
         throw Error("MAIL with acces token was not registered");
 
-      const { access_token, id_token, refresh_token, lastHistoryId, userId } =
+      const { access_token, id_token, refresh_token, lastHistoryId, userId, persona } =
         mailMetaDoc as any;
 
       const mailObjects = await fetchEmails(emailAddress, {
@@ -44,7 +44,8 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
 
         try {
           const AIResponse = await Groq.analyzeEmailContent(
-            mailObj.mailContent
+            mailObj.mailContent,
+            persona
           );
 
           const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);

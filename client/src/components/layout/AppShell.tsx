@@ -35,6 +35,7 @@ import { ConnectEmail } from "../../pages/ConnectEmail";
 import { Dashboard } from "../../pages/Dashboard";
 import { LoginPage } from "../../pages/Login";
 import { SignupPage } from "../../pages/Signup";
+import { PersonaEditor } from "../../pages/PersonaEditor";
 
 export function AppShell() {
   const theme = useTheme();
@@ -203,6 +204,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <Dashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/accounts/:accountId/persona"
+            element={
+              <RequireAuth>
+                <PersonaEditor />
               </RequireAuth>
             }
           />
