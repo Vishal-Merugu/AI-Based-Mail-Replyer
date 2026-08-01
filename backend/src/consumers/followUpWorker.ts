@@ -45,6 +45,9 @@ export default function startFollowUpWorker(workerOptions?: QueueBaseOptions) {
           subject: followUp.subject?.startsWith("Re:")
             ? followUp.subject
             : "Re: " + (followUp.subject || ""),
+          // Follow-ups are unsolicited sends, so give the recipient a
+          // standard way to opt out.
+          unsubscribeMailto: followUp.emailID,
         },
         creds,
         followUp.emailID

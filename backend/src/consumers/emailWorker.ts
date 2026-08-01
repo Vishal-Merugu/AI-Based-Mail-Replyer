@@ -19,12 +19,19 @@ import FollowUpModel from "../models/followUp";
 import ContactMemoryModel from "../models/contactMemory";
 import { evaluateRules } from "../services/ruleEngine";
 import {
+  extractAddress,
+  suppressionReason,
+} from "../services/autoReplyPolicy";
+import {
   notifyInterestedReply,
   notifyJobFailure,
 } from "../services/notifications";
 import { tryConsumeReply } from "../services/quota";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
+
+const LOOP_WINDOW_MS = 60 * 60 * 1000;
+const MAX_REPLIES_PER_CONTACT_PER_WINDOW = 3;
 
 export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
   const emailWorker = new Worker(
@@ -70,7 +77,35 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
       );
 
       await Bluebird.mapSeries(mailObjects, async (mailObj) => {
-        if (mailObj.From.includes(emailAddress)) return;
+        // Refuse to auto-reply to bulk mail, mailing lists, bounces and other
+        // auto-responders (RFC 3834). Without this two responders loop
+        // forever, which burns quota and gets the domain blacklisted.
+        const suppressed = suppressionReason(mailObj, emailAddress);
+        if (suppressed) {
+          logger.info(
+            { from: mailObj.From, reason: suppressed },
+            "Auto-reply suppressed"
+          );
+          return;
+        }
+
+        // Backstop for peers that set none of the standard headers: cap how
+        // often we will reply to the same contact. A novel loop still
+        // terminates instead of running until quota is exhausted.
+        const fromAddress = extractAddress(mailObj.From);
+        const recentReplies = await ProcessedEmailModel.countDocuments({
+          userId,
+          emailID: emailAddress,
+          fromAddress,
+          createdAt: { $gte: new Date(Date.now() - LOOP_WINDOW_MS) },
+        });
+        if (recentReplies >= MAX_REPLIES_PER_CONTACT_PER_WINDOW) {
+          logger.warn(
+            { from: fromAddress, recentReplies },
+            "Auto-reply suppressed: per-contact rate cap (possible mail loop)"
+          );
+          return;
+        }
 
         // A new inbound message on an existing thread means the recipient
         // replied — cancel any pending follow-ups for that thread.
@@ -173,6 +208,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
                 threadId: mailObj.threadId,
                 subject: mailObj.Subject,
                 from: mailObj.From,
+                fromAddress,
                 category: parsedResponse.category,
               });
               return;
@@ -191,6 +227,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
               threadId: mailObj.threadId,
               messageId: mailObj["Message-Id"],
               from: mailObj.From,
+              fromAddress,
               to: mailObj.To,
               subject: "Re: " + mailObj.Subject,
               incomingSnippet: mailObj.mailContent,
@@ -240,6 +277,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             threadId: mailObj.threadId,
             subject: mailObj.Subject,
             from: mailObj.From,
+            fromAddress,
             category: parsedResponse.category,
           });
 

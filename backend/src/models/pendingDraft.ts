@@ -18,6 +18,9 @@ const pendingDraftSchema = new Schema(
     threadId: String,
     messageId: String,
     from: String,
+    /** Normalized sender address, carried through to ProcessedEmail on
+     *  approval so review-mode replies also count toward the loop cap. */
+    fromAddress: { type: String, lowercase: true, trim: true },
     to: String,
     subject: String,
     incomingSnippet: String,

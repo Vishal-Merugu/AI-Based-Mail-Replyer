@@ -87,6 +87,7 @@ export const approveDraft = async (req: Request, res: Response) => {
       threadId: draft.threadId,
       subject: draft.subject?.replace(/^Re:\s*/, ""),
       from: draft.from,
+      fromAddress: draft.fromAddress,
       category: finalCategory,
     });
 

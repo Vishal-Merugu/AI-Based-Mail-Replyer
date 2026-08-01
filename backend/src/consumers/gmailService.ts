@@ -67,6 +67,15 @@ const MAIL_HEADER_KEYS = [
   "Date",
   "Subject",
   "Message-Id",
+  // Below: signals used to decide whether auto-replying is appropriate at
+  // all (RFC 3834). Never reply to bulk mail, mailing lists, bounces or
+  // other auto-responders — that is how mail loops start.
+  "Auto-Submitted",
+  "Precedence",
+  "List-Id",
+  "List-Unsubscribe",
+  "Return-Path",
+  "X-Auto-Response-Suppress",
 ] as const;
 
 type MailHeaderKey = (typeof MAIL_HEADER_KEYS)[number];
@@ -74,21 +83,18 @@ type MailHeaderKey = (typeof MAIL_HEADER_KEYS)[number];
 function extractHeaderData(
   headers: gmail_v1.Schema$MessagePartHeader[]
 ): Record<MailHeaderKey, string> {
-  let obj: Record<MailHeaderKey, string> = {
-    To: "",
-    From: "",
-    Date: "",
-    Subject: "",
-    "Message-Id": "",
-  };
+  const obj = Object.fromEntries(
+    MAIL_HEADER_KEYS.map((k) => [k, ""])
+  ) as Record<MailHeaderKey, string>;
+
+  // Header names are case-insensitive per RFC 5322.
+  const byLowerName = new Map(
+    MAIL_HEADER_KEYS.map((k) => [k.toLowerCase(), k])
+  );
 
   headers.forEach((header) => {
-    if (
-      header.name &&
-      MAIL_HEADER_KEYS.includes(header.name as MailHeaderKey)
-    ) {
-      obj[header.name as MailHeaderKey] = header.value || "";
-    }
+    const key = header.name && byLowerName.get(header.name.toLowerCase());
+    if (key) obj[key] = header.value || "";
   });
 
   return obj;
@@ -365,6 +371,7 @@ export async function sendReply(
     to,
     subject,
     quotedContext,
+    unsubscribeMailto,
   }: {
     from: string;
     threadId: string;
@@ -373,6 +380,7 @@ export async function sendReply(
     to: string;
     subject: string;
     quotedContext?: string;
+    unsubscribeMailto?: string;
   },
   creds: Credentials,
   emailId?: string
@@ -386,6 +394,7 @@ export async function sendReply(
     messageId,
     mailContent,
     quotedContext,
+    unsubscribeMailto,
   });
 
   await gmail.users.messages.send({
