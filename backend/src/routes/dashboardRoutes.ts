@@ -8,6 +8,11 @@ import {
   updateAccountSettings,
 } from "../controllers/draftsController";
 import { getAnalytics } from "../controllers/analyticsController";
+import {
+  deleteMemory,
+  listMemory,
+  upsertMemory,
+} from "../controllers/memoryController";
 
 const router = Router();
 
@@ -20,5 +25,8 @@ router.get("/drafts", listDrafts);
 router.post("/drafts/:draftId/approve", approveDraft);
 router.post("/drafts/:draftId/reject", rejectDraft);
 router.get("/analytics", getAnalytics);
+router.get("/memory", listMemory);
+router.post("/memory", upsertMemory);
+router.delete("/memory/:memoryId", deleteMemory);
 
 export default router;

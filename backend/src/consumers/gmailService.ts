@@ -138,6 +138,42 @@ export async function fetchEmails(
   }
 }
 
+export async function getThreadMessages(
+  threadId: string,
+  creds: Credentials,
+  emailId?: string
+): Promise<Array<{ from: string; date: string; snippet: string }>> {
+  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+
+  try {
+    const res = await gmail.users.threads.get({
+      userId: "me",
+      id: threadId,
+      auth: oAuth2Client,
+      format: "metadata",
+      metadataHeaders: ["From", "Date"],
+    });
+
+    const messages = res.data.messages || [];
+    return messages.map((m) => {
+      const headers = m.payload?.headers || [];
+      const fromHeader = headers.find(
+        (h) => h.name?.toLowerCase() === "from"
+      );
+      const dateHeader = headers.find(
+        (h) => h.name?.toLowerCase() === "date"
+      );
+      return {
+        from: fromHeader?.value || "",
+        date: dateHeader?.value || "",
+        snippet: m.snippet || "",
+      };
+    });
+  } catch (err) {
+    return [];
+  }
+}
+
 export async function listHistory(startHistoryId: string) {
   const res = await gmail.users.history.list({
     userId: "ME",

@@ -219,3 +219,31 @@ export async function fetchAnalytics(days = 30): Promise<AnalyticsData> {
   });
   return res.data;
 }
+
+// --- Contact memory ---
+
+export type ContactMemory = {
+  _id: string;
+  contactEmail: string;
+  notes: string;
+};
+
+export async function fetchMemory(): Promise<ContactMemory[]> {
+  const res = await apiClient.get<ContactMemory[]>("/memory");
+  return res.data;
+}
+
+export async function upsertMemory(
+  contactEmail: string,
+  notes: string
+): Promise<ContactMemory> {
+  const res = await apiClient.post<ContactMemory>("/memory", {
+    contactEmail,
+    notes,
+  });
+  return res.data;
+}
+
+export async function deleteMemory(id: string): Promise<void> {
+  await apiClient.delete(`/memory/${id}`);
+}

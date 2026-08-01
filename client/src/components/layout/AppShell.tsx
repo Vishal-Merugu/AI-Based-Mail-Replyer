@@ -39,6 +39,7 @@ import { PersonaEditor } from "../../pages/PersonaEditor";
 import { Outbox } from "../../pages/Outbox";
 import { RulesPage } from "../../pages/Rules";
 import { Analytics } from "../../pages/Analytics";
+import { Memory } from "../../pages/Memory";
 
 export function AppShell() {
   const theme = useTheme();
@@ -239,6 +240,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <Analytics />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/memory"
+            element={
+              <RequireAuth>
+                <Memory />
               </RequireAuth>
             }
           />

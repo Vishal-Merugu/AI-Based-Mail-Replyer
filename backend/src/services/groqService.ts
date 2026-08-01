@@ -14,15 +14,24 @@ export type CategoryHint = {
   description?: string;
 };
 
-function buildPrompt(
-  persona: Persona | undefined,
-  emailContent: string,
-  categories?: CategoryHint[]
-): string {
-  const p = persona || {};
+export type ThreadTurn = {
+  from: string;
+  date: string;
+  snippet: string;
+};
+
+export type AnalyzeContext = {
+  persona?: Persona;
+  categories?: CategoryHint[];
+  threadHistory?: ThreadTurn[];
+  contactNotes?: string;
+};
+
+function buildPrompt(emailContent: string, ctx: AnalyzeContext): string {
+  const p = ctx.persona || {};
   const categoryList =
-    categories && categories.length
-      ? categories
+    ctx.categories && ctx.categories.length
+      ? ctx.categories
       : [
           { name: "Interested" },
           { name: "Not Interested" },
@@ -45,7 +54,22 @@ function buildPrompt(
   if (p.extraInstructions) styleBits.push(`Additional guidance: ${p.extraInstructions}`);
   if (styleBits.length) parts.push(styleBits.join("\n"));
 
-  parts.push(`Email content: ${emailContent}`);
+  if (ctx.contactNotes && ctx.contactNotes.trim()) {
+    parts.push(`Context about this contact (private notes):\n${ctx.contactNotes.trim()}`);
+  }
+
+  if (ctx.threadHistory && ctx.threadHistory.length > 1) {
+    const history = ctx.threadHistory
+      .slice(0, 10)
+      .map(
+        (t, i) =>
+          `[${i + 1}] From: ${t.from} (${t.date})\n${t.snippet}`
+      )
+      .join("\n\n");
+    parts.push(`Prior conversation in this thread (oldest first):\n${history}`);
+  }
+
+  parts.push(`Latest incoming email to reply to:\n${emailContent}`);
 
   return parts.join("\n\n");
 }
@@ -72,11 +96,10 @@ class GroqChatHandler {
 
   async analyzeEmailContent(
     emailContent: string,
-    persona?: Persona,
-    categories?: CategoryHint[]
+    ctx: AnalyzeContext = {}
   ) {
     const chatCompletion = await this.getGroqChatCompletion(
-      buildPrompt(persona, emailContent, categories)
+      buildPrompt(emailContent, ctx)
     );
     const response = chatCompletion.choices[0]?.message?.content || "{}";
     return response;

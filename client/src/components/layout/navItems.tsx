@@ -4,6 +4,7 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import DraftsRoundedIcon from "@mui/icons-material/DraftsRounded";
 import RuleRoundedIcon from "@mui/icons-material/RuleRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
+import PsychologyRoundedIcon from "@mui/icons-material/PsychologyRounded";
 
 export type NavItem = {
   label: string;
@@ -22,4 +23,5 @@ export const navItems: NavItem[] = [
   { label: "Rules", path: "/rules", icon: <RuleRoundedIcon /> },
   { label: "Dashboard", path: "/dashboard", icon: <DashboardRoundedIcon /> },
   { label: "Analytics", path: "/analytics", icon: <InsightsRoundedIcon /> },
+  { label: "Memory", path: "/memory", icon: <PsychologyRoundedIcon /> },
 ];

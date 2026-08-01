@@ -5,6 +5,7 @@ import {
   createLabelOrGetExisting,
   fetchEmails,
   getMailMetaModel,
+  getThreadMessages,
   modifyThreadAddLabel,
   sendReply,
 } from "./gmailService";
@@ -14,6 +15,7 @@ import PendingDraftModel from "../models/pendingDraft";
 import CategoryModel from "../models/category";
 import RuleModel from "../models/rule";
 import FollowUpModel from "../models/followUp";
+import ContactMemoryModel from "../models/contactMemory";
 import { evaluateRules } from "../services/ruleEngine";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
@@ -102,16 +104,36 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
                 "Thanks for your email — we'll get back to you shortly.",
             };
           } else {
-            const AIResponse = await Groq.analyzeEmailContent(
-              mailObj.mailContent,
+            const creds = {
+              access_token,
+              id_token,
+              refresh_token,
+            };
+
+            const [threadHistory, contactMemory] = await Promise.all([
+              mailObj.threadId
+                ? getThreadMessages(mailObj.threadId, creds, emailAddress)
+                : Promise.resolve([]),
+              (async () => {
+                const addr = mailObj.From.match(/<([^>]+)>/)?.[1] || mailObj.From;
+                return ContactMemoryModel.findOne({
+                  userId,
+                  contactEmail: addr.toLowerCase().trim(),
+                }).lean();
+              })(),
+            ]);
+
+            const AIResponse = await Groq.analyzeEmailContent(mailObj.mailContent, {
               persona,
-              customCategories.length
+              categories: customCategories.length
                 ? customCategories.map((c) => ({
                     name: c.name,
                     description: c.description ?? "",
                   }))
-                : undefined
-            );
+                : undefined,
+              threadHistory,
+              contactNotes: contactMemory?.notes,
+            });
             parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
 
             // If AI picked a user-defined category that has dontReply or a
