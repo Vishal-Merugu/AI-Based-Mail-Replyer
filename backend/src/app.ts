@@ -3,7 +3,9 @@ import cors from "cors";
 import { requestLogger } from "./utils/misc";
 import emailRoutes from "./routes/emailRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import authRoutes from "./routes/authRoutes";
 import ENV from "./utils/validateEnv";
+import { requireAuth } from "./middleware/requireAuth";
 
 const app = express();
 
@@ -12,7 +14,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
 
+// Public — auth + Google OAuth callback + Pub/Sub push (the last two use
+// their own auth mechanisms: signed OAuth `state` and payload origin).
+app.use("/", authRoutes);
 app.use("/", emailRoutes);
-app.use("/", dashboardRoutes);
+
+// Protected — dashboard requires an authenticated session.
+app.use("/", requireAuth, dashboardRoutes);
 
 export default app;

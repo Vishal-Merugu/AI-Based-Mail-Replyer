@@ -27,8 +27,8 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
       if (!mailMetaDoc || !mailMetaDoc.access_token)
         throw Error("MAIL with acces token was not registered");
 
-      const { access_token, id_token, refresh_token, lastHistoryId } =
-        mailMetaDoc;
+      const { access_token, id_token, refresh_token, lastHistoryId, userId } =
+        mailMetaDoc as any;
 
       const mailObjects = await fetchEmails(emailAddress, {
         lastHistoryId: lastHistoryId ?? historyId,
@@ -82,6 +82,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
           );
 
           await ProcessedEmailModel.create({
+            userId,
             emailID: emailAddress,
             threadId: mailObj.threadId,
             subject: mailObj.Subject,

@@ -4,10 +4,10 @@ import MailMetaModel from "../models/mailMeta";
 import ProcessedEmailModel from "../models/processedEmail";
 import { logger } from "../utils/logger";
 
-export const listAccounts = async (_req: Request, res: Response) => {
+export const listAccounts = async (req: Request, res: Response) => {
   try {
     const accounts = await MailMetaModel.find(
-      {},
+      { userId: req.user!.userId },
       "emailID lastHistoryId createdAt updatedAt"
     ).lean();
 
@@ -22,7 +22,7 @@ export const listActivity = async (req: Request, res: Response) => {
   try {
     const limit = Math.min(Number(req.query.limit) || 20, 100);
 
-    const activity = await ProcessedEmailModel.find({})
+    const activity = await ProcessedEmailModel.find({ userId: req.user!.userId })
       .sort({ createdAt: -1 })
       .limit(limit)
       .lean();

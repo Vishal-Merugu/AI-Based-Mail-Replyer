@@ -27,8 +27,10 @@ const scopes = [
 
 export function generateGmailOAuthUrl({
   emailId,
+  state,
 }: {
   emailId: string;
+  state?: string;
 }): string {
   let login_hint;
 
@@ -39,6 +41,7 @@ export function generateGmailOAuthUrl({
     scope: scopes,
     prompt: "consent",
     login_hint: login_hint,
+    state,
   });
   return url;
 }

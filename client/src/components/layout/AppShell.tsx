@@ -14,26 +14,39 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
+import Button from "@mui/material/Button";
+import Menu from "@mui/material/Menu";
+import MenuItem from "@mui/material/MenuItem";
+import Avatar from "@mui/material/Avatar";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import MenuIcon from "@mui/icons-material/Menu";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 
 import { useColorMode } from "../../theme";
+import { useAuth } from "../../auth/AuthContext";
+import { RequireAuth } from "../../auth/RequireAuth";
 import { navItems } from "./navItems";
 import { Home } from "../../pages/Home";
 import { ConnectEmail } from "../../pages/ConnectEmail";
 import { Dashboard } from "../../pages/Dashboard";
+import { LoginPage } from "../../pages/Login";
+import { SignupPage } from "../../pages/Signup";
 
 export function AppShell() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { mode, toggleMode } = useColorMode();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
 
   const activeIndex = Math.max(
     0,
@@ -50,6 +63,12 @@ export function AppShell() {
     </IconButton>
   );
 
+  const handleLogout = () => {
+    setUserMenuAnchor(null);
+    logout();
+    navigate("/login");
+  };
+
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
       <AppBar
@@ -58,7 +77,7 @@ export function AppShell() {
         sx={{ borderBottom: 1, borderColor: "divider" }}
       >
         <Toolbar sx={{ gap: 1 }}>
-          {isMobile && (
+          {isMobile && user && (
             <IconButton
               edge="start"
               onClick={() => setDrawerOpen(true)}
@@ -77,7 +96,7 @@ export function AppShell() {
             Mail Replyer
           </Typography>
 
-          {!isMobile && (
+          {!isMobile && user && (
             <Tabs
               value={activeIndex}
               textColor="primary"
@@ -94,6 +113,55 @@ export function AppShell() {
           )}
 
           {themeToggleButton}
+
+          {user ? (
+            <>
+              <IconButton
+                onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+                aria-label="Account menu"
+                sx={{ p: 0.5 }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: "primary.main" }}>
+                  {user.email.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
+              <Menu
+                anchorEl={userMenuAnchor}
+                open={Boolean(userMenuAnchor)}
+                onClose={() => setUserMenuAnchor(null)}
+              >
+                <MenuItem disabled>
+                  <Box>
+                    <Typography variant="body2">{user.email}</Typography>
+                    {user.name && (
+                      <Typography variant="caption" color="text.secondary">
+                        {user.name}
+                      </Typography>
+                    )}
+                  </Box>
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <ListItemIcon>
+                    <LogoutRoundedIcon fontSize="small" />
+                  </ListItemIcon>
+                  Log out
+                </MenuItem>
+              </Menu>
+            </>
+          ) : (
+            <>
+              <Button color="inherit" onClick={() => navigate("/login")}>
+                Log in
+              </Button>
+              <Button
+                variant="contained"
+                size="small"
+                onClick={() => navigate("/signup")}
+              >
+                Sign up
+              </Button>
+            </>
+          )}
         </Toolbar>
       </AppBar>
 
@@ -119,9 +187,25 @@ export function AppShell() {
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/" element={<Home />} />
-          <Route path="/connect_email" element={<ConnectEmail />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route
+            path="/connect_email"
+            element={
+              <RequireAuth>
+                <ConnectEmail />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+          />
         </Routes>
       </Container>
     </Box>

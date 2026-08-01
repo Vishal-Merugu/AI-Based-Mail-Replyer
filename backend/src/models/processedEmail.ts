@@ -2,6 +2,12 @@ import { InferSchemaType, Schema, model } from "mongoose";
 
 const processedEmailSchema = new Schema(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+      index: true,
+    },
     emailID: {
       type: String,
       required: true,

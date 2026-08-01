@@ -3,6 +3,12 @@ import { encrypt, decrypt, isEncrypted } from "../utils/crypto";
 
 const mailMetaSchema = new Schema(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "user",
+      required: true,
+      index: true,
+    },
     emailID: {
       type: String,
       required: true,

@@ -13,4 +13,6 @@ export default cleanEnv(process.env, {
   GROQ_MODEL: str({ default: "llama-3.3-70b-versatile" }),
   CLIENT_URL: str({ default: "http://localhost:3000" }),
   TOKEN_ENCRYPTION_KEY: str(),
+  JWT_SECRET: str(),
+  JWT_EXPIRES_IN: str({ default: "7d" }),
 });

@@ -9,11 +9,25 @@ import { emailQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
 import { decodePubSubMessage } from "../utils/misc";
 import { logger } from "../utils/logger";
+import { signToken, verifyToken } from "../utils/jwt";
+
+// The OAuth callback lands with just Google's `state` param — no auth header
+// available. We piggyback our JWT there to carry the userId through the
+// round-trip securely (signed, expires with the token).
+function encodeOAuthState(userId: string, email: string): string {
+  return signToken({ userId, email });
+}
+
+function decodeOAuthState(state: string): { userId: string; email: string } {
+  const payload = verifyToken(state);
+  return { userId: payload.userId, email: payload.email };
+}
 
 export const handleEmailAuth = async (req: Request, res: Response) => {
   try {
     const emailId = req.params.emailId;
-    const url = generateGmailOAuthUrl({ emailId: emailId });
+    const state = encodeOAuthState(req.user!.userId, req.user!.email);
+    const url = generateGmailOAuthUrl({ emailId, state });
     res.redirect(url);
   } catch (err: any) {
     logger.error({ err }, "Error at /email controller");
@@ -23,7 +37,21 @@ export const handleEmailAuth = async (req: Request, res: Response) => {
 
 export const handleRedirect = async (req: Request, res: Response) => {
   try {
-    const { code } = req.query;
+    const { code, state } = req.query;
+
+    if (!state || typeof state !== "string") {
+      res.status(400).send("Missing state parameter");
+      return;
+    }
+
+    let userId: string;
+    try {
+      ({ userId } = decodeOAuthState(state));
+    } catch {
+      res.status(400).send("Invalid or expired state parameter");
+      return;
+    }
+
     const tokens = await exchangeCodeForToken(code as string);
 
     if (!tokens || !tokens.access_token || !tokens.refresh_token)
@@ -33,9 +61,11 @@ export const handleRedirect = async (req: Request, res: Response) => {
 
     await MailMetaModel.findOneAndUpdate(
       {
+        userId,
         emailID: profileInfo?.email,
       },
       {
+        userId,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
         expiry_date: new Date(tokens.expiry_date as number),
