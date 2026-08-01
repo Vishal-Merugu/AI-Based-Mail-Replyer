@@ -1,4 +1,5 @@
 import { QueueBaseOptions, Worker } from "bullmq";
+import mongoose from "mongoose";
 
 import { digestQueue } from "../queue";
 import UserModel from "../models/user";
@@ -12,7 +13,15 @@ const DAY_MS = 24 * HOUR_MS;
 async function buildDigestFor(userId: string, windowDays: number): Promise<string> {
   const since = new Date(Date.now() - windowDays * DAY_MS);
   const rows = await ProcessedEmailModel.aggregate([
-    { $match: { userId, createdAt: { $gte: since } } },
+    // Must be a real ObjectId: aggregation pipelines get no schema casting
+    // (unlike find), so a string userId silently matched nothing and every
+    // digest reported zero activity.
+    {
+      $match: {
+        userId: new mongoose.Types.ObjectId(userId),
+        createdAt: { $gte: since },
+      },
+    },
     { $group: { _id: "$category", count: { $sum: 1 } } },
     { $sort: { count: -1 } },
   ]);

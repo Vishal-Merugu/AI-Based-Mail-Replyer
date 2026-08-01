@@ -1,4 +1,4 @@
-import { cleanEnv, str, port } from "envalid";
+import { cleanEnv, str, port, num } from "envalid";
 
 export default cleanEnv(process.env, {
   NODE_ENV: str({
@@ -30,6 +30,9 @@ export default cleanEnv(process.env, {
   STRIPE_SECRET_KEY: str({ default: "" }),
   STRIPE_WEBHOOK_SECRET: str({ default: "" }),
   STRIPE_PRO_PRICE_ID: str({ default: "" }),
-  FREE_PLAN_QUOTA: str({ default: "100" }),
-  PRO_PLAN_QUOTA: str({ default: "5000" }),
+  // num(), not str(): as strings a typo became NaN at the call site, and
+  // `replyCount < NaN` is always false — silently blocking every reply with
+  // no error anywhere. envalid now rejects a bad value at boot instead.
+  FREE_PLAN_QUOTA: num({ default: 100 }),
+  PRO_PLAN_QUOTA: num({ default: 5000 }),
 });

@@ -5,6 +5,7 @@ import {
   createLabelOrGetExisting,
   extractAttachmentText,
   fetchEmails,
+  findOneAndUpdateMailModel,
   getMailMetaModel,
   getThreadMessages,
   modifyThreadAddLabel,
@@ -59,12 +60,15 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
         followUp: followUpCfg,
       } = mailMetaDoc as any;
 
-      const mailObjects = await fetchEmails(emailAddress, {
-        lastHistoryId: lastHistoryId ?? historyId,
-        access_token,
-        id_token,
-        refresh_token,
-      });
+      const { messages: mailObjects, newHistoryId } = await fetchEmails(
+        emailAddress,
+        {
+          lastHistoryId: lastHistoryId ?? historyId,
+          access_token,
+          id_token,
+          refresh_token,
+        }
+      );
 
       const Groq = new GroqChatHandler();
 
@@ -340,6 +344,17 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
           ).catch(() => undefined);
         }
       });
+
+      // Advance the history cursor only after the whole batch has been
+      // processed. Doing it up-front (as before) meant a crash mid-batch
+      // skipped those emails permanently. If the job throws before this
+      // point the cursor stays put and BullMQ retries the batch.
+      if (newHistoryId) {
+        await findOneAndUpdateMailModel(
+          { emailID: emailAddress },
+          { lastHistoryId: newHistoryId }
+        );
+      }
     },
     workerOptions
   );

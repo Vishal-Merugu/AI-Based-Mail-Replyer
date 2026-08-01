@@ -8,8 +8,7 @@ function currentPeriodStart(): Date {
 }
 
 export function quotaForPlan(plan: string | undefined): number {
-  if (plan === "pro") return Number(ENV.PRO_PLAN_QUOTA);
-  return Number(ENV.FREE_PLAN_QUOTA);
+  return plan === "pro" ? ENV.PRO_PLAN_QUOTA : ENV.FREE_PLAN_QUOTA;
 }
 
 export type UsageInfo = {

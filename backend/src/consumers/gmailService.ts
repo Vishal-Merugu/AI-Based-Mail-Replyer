@@ -100,14 +100,22 @@ function extractHeaderData(
   return obj;
 }
 
-type fetchEmailsReturn = Array<
-  Record<MailHeaderKey, string> & {
-    threadId: string;
-    mailContent: string;
-    labelIds: string[];
-    gmailMessageId: string;
-  }
->;
+export type FetchedMessage = Record<MailHeaderKey, string> & {
+  threadId: string;
+  mailContent: string;
+  labelIds: string[];
+  gmailMessageId: string;
+};
+
+export type FetchEmailsResult = {
+  messages: FetchedMessage[];
+  /**
+   * The history cursor to persist — but only AFTER the caller has finished
+   * processing `messages`. Advancing it early means a crash mid-batch loses
+   * those emails forever.
+   */
+  newHistoryId?: string;
+};
 
 export type fetchMailProps = {
   lastHistoryId: string;
@@ -119,7 +127,7 @@ export type fetchMailProps = {
 export async function fetchEmails(
   emailId: string,
   fetchMailProps: fetchMailProps
-): Promise<fetchEmailsReturn> {
+): Promise<FetchEmailsResult> {
   try {
     const auth = createGmailAuth(
       {
@@ -131,11 +139,7 @@ export async function fetchEmails(
     );
 
     const history = await listHistory(fetchMailProps.lastHistoryId, auth);
-
-    findOneAndUpdateMailModel(
-      { emailID: emailId },
-      { lastHistoryId: history.historyId }
-    );
+    const newHistoryId = history.historyId ?? undefined;
 
     if (history.history) {
       const messagePromises = [];
@@ -177,14 +181,15 @@ export async function fetchEmails(
         }
       );
 
-      return messages as fetchEmailsReturn;
+      return { messages: messages as FetchedMessage[], newHistoryId };
     }
 
     logger.info("No new messages since last checked.");
-    return [];
+    return { messages: [], newHistoryId };
   } catch (error) {
     logger.error({ error }, "Gmail API returned an error while fetching emails");
-    return [];
+    // No cursor on failure — do not advance past mail we never saw.
+    return { messages: [] };
   }
 }
 
