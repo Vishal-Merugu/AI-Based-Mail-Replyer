@@ -33,11 +33,18 @@ export type AuthUser = {
   name?: string;
 };
 
+export type FollowUpConfig = {
+  enabled: boolean;
+  intervalDays: number;
+  maxAttempts: number;
+};
+
 export type ConnectedAccount = {
   _id: string;
   emailID: string;
   lastHistoryId?: string;
   autoSend?: boolean;
+  followUp?: FollowUpConfig;
   createdAt: string;
   updatedAt: string;
 };
@@ -124,8 +131,8 @@ export async function savePersona(
 
 export async function updateAccountSettings(
   accountId: string,
-  settings: { autoSend: boolean }
-): Promise<{ autoSend: boolean }> {
+  settings: { autoSend?: boolean; followUp?: FollowUpConfig }
+): Promise<{ autoSend?: boolean; followUp?: FollowUpConfig }> {
   const res = await apiClient.put(`/accounts/${accountId}/settings`, settings);
   return res.data;
 }

@@ -1,6 +1,6 @@
 import { QueueBaseOptions, Worker } from "bullmq";
 
-import { emailQueue } from "../queue";
+import { emailQueue, followUpQueue } from "../queue";
 import {
   createLabelOrGetExisting,
   fetchEmails,
@@ -13,6 +13,7 @@ import ProcessedEmailModel from "../models/processedEmail";
 import PendingDraftModel from "../models/pendingDraft";
 import CategoryModel from "../models/category";
 import RuleModel from "../models/rule";
+import FollowUpModel from "../models/followUp";
 import { evaluateRules } from "../services/ruleEngine";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
@@ -40,6 +41,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
         userId,
         persona,
         autoSend,
+        followUp: followUpCfg,
       } = mailMetaDoc as any;
 
       const mailObjects = await fetchEmails(emailAddress, {
@@ -61,6 +63,19 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
 
       await Bluebird.mapSeries(mailObjects, async (mailObj) => {
         if (mailObj.From.includes(emailAddress)) return;
+
+        // A new inbound message on an existing thread means the recipient
+        // replied — cancel any pending follow-ups for that thread.
+        if (mailObj.threadId) {
+          await FollowUpModel.updateMany(
+            {
+              accountId,
+              threadId: mailObj.threadId,
+              status: "pending",
+            },
+            { status: "cancelled" }
+          );
+        }
 
         try {
           const ruleMatch = evaluateRules(userRules as any, {
@@ -177,6 +192,36 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             from: mailObj.From,
             category: parsedResponse.category,
           });
+
+          if (
+            followUpCfg?.enabled &&
+            parsedResponse.category === "Interested" &&
+            mailObj.threadId
+          ) {
+            const intervalDays = followUpCfg.intervalDays ?? 3;
+            const maxAttempts = followUpCfg.maxAttempts ?? 2;
+            const scheduledAt = new Date(
+              Date.now() + intervalDays * 24 * 60 * 60 * 1000
+            );
+            const doc = await FollowUpModel.create({
+              userId,
+              accountId,
+              emailID: emailAddress,
+              threadId: mailObj.threadId,
+              messageId: mailObj["Message-Id"],
+              to: mailObj.From,
+              subject: mailObj.Subject,
+              scheduledAt,
+              attemptNumber: 1,
+              maxAttempts,
+              intervalDays,
+            });
+            await followUpQueue.add(
+              "sendFollowUp",
+              { followUpId: doc._id.toString() },
+              { delay: intervalDays * 24 * 60 * 60 * 1000 }
+            );
+          }
         } catch (err: any) {
           // Isolate failures per-message so one bad thread doesn't fail
           // the whole job and cause already-replied messages to be redone.

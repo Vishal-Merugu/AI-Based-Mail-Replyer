@@ -19,9 +19,14 @@ import Typography from "@mui/material/Typography";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Tooltip from "@mui/material/Tooltip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 import InboxRoundedIcon from "@mui/icons-material/InboxRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
+import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 
 import {
   API_URL,
@@ -36,6 +41,13 @@ export function ConnectEmail(): JSX.Element {
   const [email, setEmail] = useState("");
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followUpTarget, setFollowUpTarget] =
+    useState<ConnectedAccount | null>(null);
+  const [followUpDraft, setFollowUpDraft] = useState({
+    enabled: false,
+    intervalDays: 3,
+    maxAttempts: 2,
+  });
   const [status, setStatus] = useState<{
     severity: "success" | "error";
     message: string;
@@ -183,6 +195,20 @@ export function ConnectEmail(): JSX.Element {
                       </Tooltip>
                       <Button
                         size="small"
+                        startIcon={<ReplayRoundedIcon />}
+                        onClick={() => {
+                          setFollowUpTarget(account);
+                          setFollowUpDraft({
+                            enabled: !!account.followUp?.enabled,
+                            intervalDays: account.followUp?.intervalDays ?? 3,
+                            maxAttempts: account.followUp?.maxAttempts ?? 2,
+                          });
+                        }}
+                      >
+                        Follow-up
+                      </Button>
+                      <Button
+                        size="small"
                         startIcon={<TuneRoundedIcon />}
                         onClick={() =>
                           navigate(`/accounts/${account._id}/persona`)
@@ -213,6 +239,81 @@ export function ConnectEmail(): JSX.Element {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!followUpTarget}
+        onClose={() => setFollowUpTarget(null)}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle>Follow-up sequence</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              When enabled, replies marked <strong>Interested</strong> from{" "}
+              <strong>{followUpTarget?.emailID}</strong> get an automatic
+              follow-up if no reply arrives.
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={followUpDraft.enabled}
+                  onChange={(_, c) =>
+                    setFollowUpDraft({ ...followUpDraft, enabled: c })
+                  }
+                />
+              }
+              label="Enable follow-ups"
+            />
+            <TextField
+              type="number"
+              label="Days between follow-ups"
+              inputProps={{ min: 1, max: 30 }}
+              value={followUpDraft.intervalDays}
+              onChange={(e) =>
+                setFollowUpDraft({
+                  ...followUpDraft,
+                  intervalDays: Number(e.target.value) || 1,
+                })
+              }
+              disabled={!followUpDraft.enabled}
+            />
+            <TextField
+              type="number"
+              label="Max attempts"
+              inputProps={{ min: 1, max: 5 }}
+              value={followUpDraft.maxAttempts}
+              onChange={(e) =>
+                setFollowUpDraft({
+                  ...followUpDraft,
+                  maxAttempts: Number(e.target.value) || 1,
+                })
+              }
+              disabled={!followUpDraft.enabled}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFollowUpTarget(null)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              if (!followUpTarget) return;
+              try {
+                await updateAccountSettings(followUpTarget._id, {
+                  followUp: followUpDraft,
+                });
+                setFollowUpTarget(null);
+                loadAccounts();
+              } catch (err) {
+                console.error(err);
+              }
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }

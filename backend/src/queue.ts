@@ -12,3 +12,7 @@ export const redisConnection = new IORedis({
 export const emailQueue = new Queue("emailQueue", {
   connection: redisConnection,
 });
+
+export const followUpQueue = new Queue("followUpQueue", {
+  connection: redisConnection,
+});

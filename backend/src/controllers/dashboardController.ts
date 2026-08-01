@@ -8,7 +8,7 @@ export const listAccounts = async (req: Request, res: Response) => {
   try {
     const accounts = await MailMetaModel.find(
       { userId: req.user!.userId },
-      "emailID lastHistoryId autoSend createdAt updatedAt"
+      "emailID lastHistoryId autoSend followUp createdAt updatedAt"
     ).lean();
 
     res.status(200).send(accounts);

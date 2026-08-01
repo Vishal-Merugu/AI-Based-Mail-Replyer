@@ -5,16 +5,16 @@ import ENV from "../utils/validateEnv";
 import { logger } from "../utils/logger";
 import { redisConnection } from "../queue";
 import startEmailWorker from "./emailWorker";
+import startFollowUpWorker from "./followUpWorker";
 
 mongoose
   .connect(ENV.MONGO_URL)
   .then(() => {
     logger.info("Mongo connection successful");
-    return startEmailWorker({ connection: redisConnection });
-  })
-  .then(() => {
-    logger.info("Consumer started");
+    startEmailWorker({ connection: redisConnection });
+    startFollowUpWorker({ connection: redisConnection });
+    logger.info("Consumer started (email + follow-up workers)");
   })
   .catch((err) => {
-    logger.error({ err }, "Failed to start email consumer");
+    logger.error({ err }, "Failed to start consumers");
   });

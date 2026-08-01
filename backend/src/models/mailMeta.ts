@@ -19,6 +19,11 @@ const mailMetaSchema = new Schema(
     expiry_date: Date,
     lastHistoryId: String,
     autoSend: { type: Boolean, default: true },
+    followUp: {
+      enabled: { type: Boolean, default: false },
+      intervalDays: { type: Number, default: 3 },
+      maxAttempts: { type: Number, default: 2 },
+    },
     persona: {
       name: { type: String, default: "" },
       tone: { type: String, default: "professional" },

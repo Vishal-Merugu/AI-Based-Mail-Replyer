@@ -119,16 +119,33 @@ export const rejectDraft = async (req: Request, res: Response) => {
 
 export const updateAccountSettings = async (req: Request, res: Response) => {
   try {
-    const { autoSend } = req.body ?? {};
+    const { autoSend, followUp } = req.body ?? {};
+    const updates: any = {};
 
-    if (typeof autoSend !== "boolean") {
-      res.status(400).send({ message: "autoSend (boolean) is required" });
-      return;
+    if (autoSend !== undefined) {
+      if (typeof autoSend !== "boolean") {
+        res.status(400).send({ message: "autoSend must be a boolean" });
+        return;
+      }
+      updates.autoSend = autoSend;
+    }
+    if (followUp !== undefined) {
+      updates.followUp = {
+        enabled: !!followUp.enabled,
+        intervalDays: Math.max(
+          1,
+          Math.min(30, Number(followUp.intervalDays) || 3)
+        ),
+        maxAttempts: Math.max(
+          1,
+          Math.min(5, Number(followUp.maxAttempts) || 2)
+        ),
+      };
     }
 
     const account = await MailMetaModel.findOneAndUpdate(
       { _id: req.params.accountId, userId: req.user!.userId },
-      { autoSend },
+      updates,
       { new: true }
     ).lean();
 
@@ -137,7 +154,10 @@ export const updateAccountSettings = async (req: Request, res: Response) => {
       return;
     }
 
-    res.status(200).send({ autoSend: account.autoSend });
+    res.status(200).send({
+      autoSend: account.autoSend,
+      followUp: account.followUp,
+    });
   } catch (err: any) {
     logger.error({ err }, "Error updating account settings");
     res.status(500).send({ message: "Internal Server Error" });
