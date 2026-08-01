@@ -9,11 +9,33 @@ export type Persona = {
   extraInstructions?: string;
 };
 
-function buildPrompt(persona: Persona | undefined, emailContent: string): string {
+export type CategoryHint = {
+  name: string;
+  description?: string;
+};
+
+function buildPrompt(
+  persona: Persona | undefined,
+  emailContent: string,
+  categories?: CategoryHint[]
+): string {
   const p = persona || {};
+  const categoryList =
+    categories && categories.length
+      ? categories
+      : [
+          { name: "Interested" },
+          { name: "Not Interested" },
+          { name: "More Information" },
+        ];
+
+  const catBlock = categoryList
+    .map((c) => (c.description ? `- ${c.name}: ${c.description}` : `- ${c.name}`))
+    .join("\n");
+
   const parts: string[] = [
-    'Analyze this email content and determine the category out of: "Interested", "Not Interested", or "More Information". Also, generate an appropriate response email.',
-    'You MUST output the response purely as a valid JSON object with EXACTLY these two keys: "category" and "responseMail". Do not include any other text, markdown formatting, or explanation.',
+    `Analyze this email content and pick exactly one category from the list below. Also generate an appropriate response email.\nCategories:\n${catBlock}`,
+    'You MUST output the response purely as a valid JSON object with EXACTLY these two keys: "category" and "responseMail". The "category" value must be one of the category names above. Do not include any other text, markdown formatting, or explanation.',
   ];
 
   const styleBits: string[] = [];
@@ -48,9 +70,13 @@ class GroqChatHandler {
     });
   }
 
-  async analyzeEmailContent(emailContent: string, persona?: Persona) {
+  async analyzeEmailContent(
+    emailContent: string,
+    persona?: Persona,
+    categories?: CategoryHint[]
+  ) {
     const chatCompletion = await this.getGroqChatCompletion(
-      buildPrompt(persona, emailContent)
+      buildPrompt(persona, emailContent, categories)
     );
     const response = chatCompletion.choices[0]?.message?.content || "{}";
     return response;

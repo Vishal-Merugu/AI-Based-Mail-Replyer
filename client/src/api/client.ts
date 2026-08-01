@@ -145,3 +145,54 @@ export async function approveDraft(
 export async function rejectDraft(draftId: string): Promise<void> {
   await apiClient.post(`/drafts/${draftId}/reject`);
 }
+
+// --- Categories & rules ---
+
+export type Category = {
+  _id: string;
+  name: string;
+  description?: string;
+  replyTemplate?: string;
+  dontReply?: boolean;
+};
+
+export type Rule = {
+  _id: string;
+  matchType: "from-domain" | "from-address" | "subject-contains";
+  matchValue: string;
+  action: "force-category" | "skip-reply";
+  categoryName?: string;
+  priority?: number;
+};
+
+export async function fetchCategories(): Promise<Category[]> {
+  const res = await apiClient.get<Category[]>("/categories");
+  return res.data;
+}
+
+export async function createCategory(
+  body: Omit<Category, "_id">
+): Promise<Category> {
+  const res = await apiClient.post<Category>("/categories", body);
+  return res.data;
+}
+
+export async function deleteCategory(id: string): Promise<void> {
+  await apiClient.delete(`/categories/${id}`);
+}
+
+export async function fetchRules(): Promise<Rule[]> {
+  const res = await apiClient.get<Rule[]>("/rules");
+  return res.data;
+}
+
+export async function createRule(
+  body: Omit<Rule, "_id">
+): Promise<Rule> {
+  const res = await apiClient.post<Rule>("/rules", body);
+  return res.data;
+}
+
+export async function deleteRule(id: string): Promise<void> {
+  await apiClient.delete(`/rules/${id}`);
+}

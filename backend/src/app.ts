@@ -3,6 +3,7 @@ import cors from "cors";
 import { requestLogger } from "./utils/misc";
 import emailRoutes from "./routes/emailRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import rulesRoutes from "./routes/rulesRoutes";
 import authRoutes from "./routes/authRoutes";
 import ENV from "./utils/validateEnv";
 import { requireAuth } from "./middleware/requireAuth";
@@ -21,5 +22,6 @@ app.use("/", emailRoutes);
 
 // Protected — dashboard requires an authenticated session.
 app.use("/", requireAuth, dashboardRoutes);
+app.use("/", requireAuth, rulesRoutes);
 
 export default app;

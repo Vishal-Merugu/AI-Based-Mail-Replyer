@@ -37,6 +37,7 @@ import { LoginPage } from "../../pages/Login";
 import { SignupPage } from "../../pages/Signup";
 import { PersonaEditor } from "../../pages/PersonaEditor";
 import { Outbox } from "../../pages/Outbox";
+import { RulesPage } from "../../pages/Rules";
 
 export function AppShell() {
   const theme = useTheme();
@@ -221,6 +222,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <Outbox />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/rules"
+            element={
+              <RequireAuth>
+                <RulesPage />
               </RequireAuth>
             }
           />

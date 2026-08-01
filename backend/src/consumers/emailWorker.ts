@@ -11,6 +11,9 @@ import {
 import GroqChatHandler from "../services/groqService";
 import ProcessedEmailModel from "../models/processedEmail";
 import PendingDraftModel from "../models/pendingDraft";
+import CategoryModel from "../models/category";
+import RuleModel from "../models/rule";
+import { evaluateRules } from "../services/ruleEngine";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
 
@@ -48,16 +51,72 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
 
       const Groq = new GroqChatHandler();
 
+      const [customCategories, userRules] = await Promise.all([
+        CategoryModel.find({ userId }).lean(),
+        RuleModel.find({ userId }).lean(),
+      ]);
+      const categoriesByName = new Map(
+        customCategories.map((c) => [c.name, c])
+      );
+
       await Bluebird.mapSeries(mailObjects, async (mailObj) => {
         if (mailObj.From.includes(emailAddress)) return;
 
         try {
-          const AIResponse = await Groq.analyzeEmailContent(
-            mailObj.mailContent,
-            persona
-          );
+          const ruleMatch = evaluateRules(userRules as any, {
+            From: mailObj.From,
+            Subject: mailObj.Subject,
+          });
 
-          const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+          if (ruleMatch?.action === "skip-reply") {
+            logger.info(
+              { from: mailObj.From, threadId: mailObj.threadId },
+              "Rule matched: skipping reply"
+            );
+            return;
+          }
+
+          let parsedResponse: { category: string; responseMail: string };
+
+          if (ruleMatch?.action === "force-category" && ruleMatch.categoryName) {
+            const cat = categoriesByName.get(ruleMatch.categoryName);
+            parsedResponse = {
+              category: ruleMatch.categoryName,
+              responseMail:
+                cat?.replyTemplate ||
+                "Thanks for your email — we'll get back to you shortly.",
+            };
+          } else {
+            const AIResponse = await Groq.analyzeEmailContent(
+              mailObj.mailContent,
+              persona,
+              customCategories.length
+                ? customCategories.map((c) => ({
+                    name: c.name,
+                    description: c.description ?? "",
+                  }))
+                : undefined
+            );
+            parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+
+            // If AI picked a user-defined category that has dontReply or a
+            // hardcoded template, honor those.
+            const cat = categoriesByName.get(parsedResponse.category);
+            if (cat?.dontReply) {
+              await ProcessedEmailModel.create({
+                userId,
+                emailID: emailAddress,
+                threadId: mailObj.threadId,
+                subject: mailObj.Subject,
+                from: mailObj.From,
+                category: parsedResponse.category,
+              });
+              return;
+            }
+            if (cat?.replyTemplate) {
+              parsedResponse.responseMail = cat.replyTemplate;
+            }
+          }
 
           // Review-mode: park the draft in the outbox instead of sending.
           if (autoSend === false) {
