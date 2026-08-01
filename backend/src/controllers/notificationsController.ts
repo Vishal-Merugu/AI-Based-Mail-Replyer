@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 
 import UserModel from "../models/user";
+import { isValidSlackWebhookUrl } from "../services/notifications";
 import { logger } from "../utils/logger";
 
 export const getNotifications = async (req: Request, res: Response) => {
@@ -26,6 +27,16 @@ export const updateNotifications = async (req: Request, res: Response) => {
       digestEnabled,
       digestCadence,
     } = req.body ?? {};
+
+    // Reject at write time so the user gets real feedback, rather than
+    // silently saving a URL that the sender will later refuse to call.
+    if (slackWebhookUrl && !isValidSlackWebhookUrl(slackWebhookUrl)) {
+      res.status(400).send({
+        message:
+          "slackWebhookUrl must be an https://hooks.slack.com/services/... URL",
+      });
+      return;
+    }
 
     const user = await UserModel.findByIdAndUpdate(
       req.user!.userId,
