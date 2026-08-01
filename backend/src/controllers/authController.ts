@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 
 import UserModel from "../models/user";
-import { signToken } from "../utils/jwt";
+import { signSessionToken } from "../utils/jwt";
 import { logger } from "../utils/logger";
 
 const BCRYPT_ROUNDS = 12;
@@ -37,7 +37,10 @@ export const signup = async (req: Request, res: Response) => {
       name,
     });
 
-    const token = signToken({ userId: user._id.toString(), email: user.email });
+    const token = signSessionToken({
+      userId: user._id.toString(),
+      email: user.email,
+    });
     res.status(201).send({ token, user: serializeUser(user) });
   } catch (err: any) {
     logger.error({ err }, "Error in /auth/signup");
@@ -66,7 +69,10 @@ export const login = async (req: Request, res: Response) => {
       return;
     }
 
-    const token = signToken({ userId: user._id.toString(), email: user.email });
+    const token = signSessionToken({
+      userId: user._id.toString(),
+      email: user.email,
+    });
     res.status(200).send({ token, user: serializeUser(user) });
   } catch (err: any) {
     logger.error({ err }, "Error in /auth/login");

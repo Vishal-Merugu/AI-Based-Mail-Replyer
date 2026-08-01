@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 
-import { JwtPayload, verifyToken } from "../utils/jwt";
+import { JwtPayload, verifySessionToken } from "../utils/jwt";
 import { logger } from "../utils/logger";
 
 declare global {
@@ -24,7 +24,7 @@ export function requireAuth(
   }
 
   try {
-    req.user = verifyToken(header.slice("Bearer ".length));
+    req.user = verifySessionToken(header.slice("Bearer ".length));
     next();
   } catch (err) {
     logger.warn({ err }, "Auth token verification failed");

@@ -9,17 +9,22 @@ import { emailQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
 import { decodePubSubMessage } from "../utils/misc";
 import { logger } from "../utils/logger";
-import { signToken, verifyToken } from "../utils/jwt";
+import {
+  signOAuthStateToken,
+  verifyOAuthStateToken,
+} from "../utils/jwt";
 
 // The OAuth callback lands with just Google's `state` param — no auth header
-// available. We piggyback our JWT there to carry the userId through the
-// round-trip securely (signed, expires with the token).
+// available — so the userId rides along inside it. This is a purpose-scoped,
+// short-lived token (audience "oauth-state", 10m) rather than the user's
+// session token: `state` is exposed to Google, the URL bar, Referer headers
+// and access logs, so it must not be usable as a session credential.
 function encodeOAuthState(userId: string, email: string): string {
-  return signToken({ userId, email });
+  return signOAuthStateToken({ userId, email });
 }
 
 function decodeOAuthState(state: string): { userId: string; email: string } {
-  const payload = verifyToken(state);
+  const payload = verifyOAuthStateToken(state);
   return { userId: payload.userId, email: payload.email };
 }
 
