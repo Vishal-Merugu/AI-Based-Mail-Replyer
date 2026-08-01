@@ -6,6 +6,7 @@ import RuleRoundedIcon from "@mui/icons-material/RuleRounded";
 import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 import PsychologyRoundedIcon from "@mui/icons-material/PsychologyRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
+import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
 
 export type NavItem = {
   label: string;
@@ -30,4 +31,5 @@ export const navItems: NavItem[] = [
     path: "/notifications",
     icon: <NotificationsRoundedIcon />,
   },
+  { label: "Billing", path: "/billing", icon: <CreditCardRoundedIcon /> },
 ];

@@ -269,3 +269,26 @@ export async function saveNotifications(
   const res = await apiClient.put<NotificationSettings>("/notifications", s);
   return res.data;
 }
+
+// --- Billing ---
+
+export type BillingInfo = {
+  plan: "free" | "pro";
+  used: number;
+  limit: number;
+  remaining: number;
+  periodStart: string;
+  stripeConfigured: boolean;
+};
+
+export async function fetchBilling(): Promise<BillingInfo> {
+  const res = await apiClient.get<BillingInfo>("/billing");
+  return res.data;
+}
+
+export async function startCheckout(): Promise<string> {
+  const res = await apiClient.post<{ url: string }>(
+    "/billing/checkout-session"
+  );
+  return res.data.url;
+}

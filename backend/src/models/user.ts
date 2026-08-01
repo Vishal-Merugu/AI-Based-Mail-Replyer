@@ -14,6 +14,13 @@ const userSchema = new Schema(
       required: true,
     },
     name: String,
+    plan: {
+      type: String,
+      enum: ["free", "pro"],
+      default: "free",
+    },
+    stripeCustomerId: String,
+    stripeSubscriptionId: String,
     notifications: {
       slackWebhookUrl: { type: String, default: "" },
       notifyOnInterested: { type: Boolean, default: true },

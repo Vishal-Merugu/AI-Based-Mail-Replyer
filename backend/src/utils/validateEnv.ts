@@ -15,4 +15,9 @@ export default cleanEnv(process.env, {
   TOKEN_ENCRYPTION_KEY: str(),
   JWT_SECRET: str(),
   JWT_EXPIRES_IN: str({ default: "7d" }),
+  STRIPE_SECRET_KEY: str({ default: "" }),
+  STRIPE_WEBHOOK_SECRET: str({ default: "" }),
+  STRIPE_PRO_PRICE_ID: str({ default: "" }),
+  FREE_PLAN_QUOTA: str({ default: "100" }),
+  PRO_PLAN_QUOTA: str({ default: "5000" }),
 });

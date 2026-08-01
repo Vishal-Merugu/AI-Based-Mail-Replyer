@@ -41,6 +41,7 @@ import { RulesPage } from "../../pages/Rules";
 import { Analytics } from "../../pages/Analytics";
 import { Memory } from "../../pages/Memory";
 import { Notifications } from "../../pages/Notifications";
+import { Billing } from "../../pages/Billing";
 
 export function AppShell() {
   const theme = useTheme();
@@ -257,6 +258,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <Notifications />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/billing"
+            element={
+              <RequireAuth>
+                <Billing />
               </RequireAuth>
             }
           />

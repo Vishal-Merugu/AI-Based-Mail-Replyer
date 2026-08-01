@@ -22,6 +22,7 @@ import {
   notifyInterestedReply,
   notifyJobFailure,
 } from "../services/notifications";
+import { tryConsumeReply } from "../services/quota";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
 
@@ -94,6 +95,16 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             logger.info(
               { from: mailObj.From, threadId: mailObj.threadId },
               "Rule matched: skipping reply"
+            );
+            return;
+          }
+
+          // Enforce monthly quota — atomic increment, safe under concurrency.
+          const allowed = await tryConsumeReply(String(userId));
+          if (!allowed) {
+            logger.warn(
+              { userId, threadId: mailObj.threadId },
+              "Quota exceeded — skipping reply"
             );
             return;
           }

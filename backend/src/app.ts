@@ -5,12 +5,23 @@ import emailRoutes from "./routes/emailRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
 import rulesRoutes from "./routes/rulesRoutes";
 import authRoutes from "./routes/authRoutes";
+import billingRoutes from "./routes/billingRoutes";
+import { handleStripeWebhook } from "./controllers/billingController";
 import ENV from "./utils/validateEnv";
 import { requireAuth } from "./middleware/requireAuth";
 
 const app = express();
 
 app.use(cors({ origin: ENV.CLIENT_URL }));
+
+// Stripe webhook MUST see the raw body for signature verification. Mount it
+// with express.raw() BEFORE the JSON body parser, and outside of auth.
+app.post(
+  "/webhooks/stripe",
+  express.raw({ type: "application/json" }),
+  handleStripeWebhook
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);
@@ -23,5 +34,6 @@ app.use("/", emailRoutes);
 // Protected — dashboard requires an authenticated session.
 app.use("/", requireAuth, dashboardRoutes);
 app.use("/", requireAuth, rulesRoutes);
+app.use("/", requireAuth, billingRoutes);
 
 export default app;
