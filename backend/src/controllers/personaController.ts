@@ -1,61 +1,45 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 
 import MailMetaModel from "../models/mailMeta";
-import { logger } from "../utils/logger";
+import { notFound } from "../errors/AppError";
 
-const TONES = ["professional", "friendly", "concise", "enthusiastic", "formal"];
+const TONES = [
+  "professional",
+  "friendly",
+  "concise",
+  "enthusiastic",
+  "formal",
+] as const;
+
+export const personaSchema = z.object({
+  name: z.string().trim().max(200).default(""),
+  tone: z.enum(TONES).default("professional"),
+  signature: z.string().max(2000).default(""),
+  extraInstructions: z.string().max(4000).default(""),
+});
 
 export const getPersona = async (req: Request, res: Response) => {
-  try {
-    const account = await MailMetaModel.findOne(
-      { _id: req.params.accountId, userId: req.user!.userId },
-      "emailID persona"
-    ).lean();
+  const account = await MailMetaModel.findOne(
+    { _id: req.params.accountId, userId: req.user!.userId },
+    "emailID persona"
+  ).lean();
 
-    if (!account) {
-      res.status(404).send({ message: "Account not found" });
-      return;
-    }
+  if (!account) throw notFound("Account not found");
 
-    res.status(200).send({ emailID: account.emailID, persona: account.persona });
-  } catch (err: any) {
-    logger.error({ err }, "Error in GET /accounts/:accountId/persona");
-    res.status(500).send({ message: "Internal Server Error" });
-  }
+  res.status(200).send({ emailID: account.emailID, persona: account.persona });
 };
 
 export const updatePersona = async (req: Request, res: Response) => {
-  try {
-    const { name, tone, signature, extraInstructions } = req.body ?? {};
+  const persona = req.body as z.infer<typeof personaSchema>;
 
-    if (tone && !TONES.includes(tone)) {
-      res.status(400).send({
-        message: `tone must be one of: ${TONES.join(", ")}`,
-      });
-      return;
-    }
+  const account = await MailMetaModel.findOneAndUpdate(
+    { _id: req.params.accountId, userId: req.user!.userId },
+    { persona },
+    { new: true }
+  ).lean();
 
-    const account = await MailMetaModel.findOneAndUpdate(
-      { _id: req.params.accountId, userId: req.user!.userId },
-      {
-        persona: {
-          name: name ?? "",
-          tone: tone ?? "professional",
-          signature: signature ?? "",
-          extraInstructions: extraInstructions ?? "",
-        },
-      },
-      { new: true }
-    ).lean();
+  if (!account) throw notFound("Account not found");
 
-    if (!account) {
-      res.status(404).send({ message: "Account not found" });
-      return;
-    }
-
-    res.status(200).send({ persona: account.persona });
-  } catch (err: any) {
-    logger.error({ err }, "Error in PUT /accounts/:accountId/persona");
-    res.status(500).send({ message: "Internal Server Error" });
-  }
+  res.status(200).send({ persona: account.persona });
 };

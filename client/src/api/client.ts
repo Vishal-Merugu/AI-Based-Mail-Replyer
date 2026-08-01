@@ -27,6 +27,28 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * Without this an expired token made every request fail silently and the UI
+ * just rendered empty states. Clear the dead token and send the user to
+ * login instead.
+ */
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const isAuthCall = String(error?.config?.url || "").startsWith("/auth/");
+
+    // Don't redirect on a failed login — the form shows that error itself.
+    if (status === 401 && !isAuthCall) {
+      setStoredToken(null);
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export type AuthUser = {
   id: string;
   email: string;

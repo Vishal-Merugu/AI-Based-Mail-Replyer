@@ -1,14 +1,20 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import { z } from "zod";
 
 import ProcessedEmailModel from "../models/processedEmail";
-import { logger } from "../utils/logger";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export const analyticsQuerySchema = z.object({
+  days: z.coerce.number().int().min(1).max(90).default(30),
+});
+
 export const getAnalytics = async (req: Request, res: Response) => {
-  try {
-    const days = Math.min(Math.max(Number(req.query.days) || 30, 1), 90);
+  {
+    const { days } = req.query as unknown as z.infer<
+      typeof analyticsQuerySchema
+    >;
     const since = new Date(Date.now() - days * DAY_MS);
     const userId = new mongoose.Types.ObjectId(req.user!.userId);
 
@@ -58,12 +64,12 @@ export const getAnalytics = async (req: Request, res: Response) => {
         count: a.count,
       })),
       totals: {
-        emailsProcessed: dailyRaw.reduce((sum: number, d: any) => sum + d.count, 0),
+        emailsProcessed: dailyRaw.reduce(
+          (sum: number, d: any) => sum + d.count,
+          0,
+        ),
         rangeDays: days,
       },
     });
-  } catch (err: any) {
-    logger.error({ err }, "Error in /analytics");
-    res.status(500).send({ message: "Internal Server Error" });
   }
 };

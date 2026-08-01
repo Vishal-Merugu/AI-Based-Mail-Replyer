@@ -1,64 +1,42 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 
 import UserModel from "../models/user";
 import { isValidSlackWebhookUrl } from "../services/notifications";
-import { logger } from "../utils/logger";
+import { notFound } from "../errors/AppError";
+
+export const notificationsSchema = z.object({
+  slackWebhookUrl: z
+    .string()
+    .default("")
+    .refine((v) => v === "" || isValidSlackWebhookUrl(v), {
+      message:
+        "slackWebhookUrl must be an https://hooks.slack.com/services/... URL",
+    }),
+  notifyOnInterested: z.boolean().default(true),
+  notifyOnFailure: z.boolean().default(true),
+  digestEnabled: z.boolean().default(false),
+  digestCadence: z.enum(["daily", "weekly"]).default("weekly"),
+});
 
 export const getNotifications = async (req: Request, res: Response) => {
-  try {
-    const user = await UserModel.findById(req.user!.userId, "notifications").lean();
-    if (!user) {
-      res.status(404).send({ message: "User not found" });
-      return;
-    }
-    res.status(200).send(user.notifications || {});
-  } catch (err: any) {
-    logger.error({ err }, "Error getting notifications");
-    res.status(500).send({ message: "Internal Server Error" });
-  }
+  const user = await UserModel.findById(
+    req.user!.userId,
+    "notifications"
+  ).lean();
+  if (!user) throw notFound("User not found");
+  res.status(200).send(user.notifications || {});
 };
 
 export const updateNotifications = async (req: Request, res: Response) => {
-  try {
-    const {
-      slackWebhookUrl,
-      notifyOnInterested,
-      notifyOnFailure,
-      digestEnabled,
-      digestCadence,
-    } = req.body ?? {};
+  const notifications = req.body as z.infer<typeof notificationsSchema>;
 
-    // Reject at write time so the user gets real feedback, rather than
-    // silently saving a URL that the sender will later refuse to call.
-    if (slackWebhookUrl && !isValidSlackWebhookUrl(slackWebhookUrl)) {
-      res.status(400).send({
-        message:
-          "slackWebhookUrl must be an https://hooks.slack.com/services/... URL",
-      });
-      return;
-    }
+  const user = await UserModel.findByIdAndUpdate(
+    req.user!.userId,
+    { notifications },
+    { new: true }
+  ).lean();
+  if (!user) throw notFound("User not found");
 
-    const user = await UserModel.findByIdAndUpdate(
-      req.user!.userId,
-      {
-        notifications: {
-          slackWebhookUrl: slackWebhookUrl ?? "",
-          notifyOnInterested: !!notifyOnInterested,
-          notifyOnFailure: !!notifyOnFailure,
-          digestEnabled: !!digestEnabled,
-          digestCadence:
-            digestCadence === "daily" ? "daily" : "weekly",
-        },
-      },
-      { new: true }
-    ).lean();
-    if (!user) {
-      res.status(404).send({ message: "User not found" });
-      return;
-    }
-    res.status(200).send(user.notifications || {});
-  } catch (err: any) {
-    logger.error({ err }, "Error updating notifications");
-    res.status(500).send({ message: "Internal Server Error" });
-  }
+  res.status(200).send(user.notifications || {});
 };
