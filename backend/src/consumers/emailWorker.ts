@@ -10,7 +10,7 @@ import {
   modifyThreadAddLabel,
   sendReply,
 } from "./gmailService";
-import GroqChatHandler from "../services/groqService";
+import GroqChatHandler, { DEFAULT_CATEGORIES } from "../services/groqService";
 import ProcessedEmailModel from "../models/processedEmail";
 import PendingDraftModel from "../models/pendingDraft";
 import CategoryModel from "../models/category";
@@ -185,18 +185,25 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
               ? `${mailObj.mailContent}\n\n[Attached PDF content]\n${attachmentText}`
               : mailObj.mailContent;
 
+            const allowedCategories = customCategories.length
+              ? customCategories.map((c) => ({
+                  name: c.name,
+                  description: c.description ?? "",
+                }))
+              : DEFAULT_CATEGORIES;
+
             const AIResponse = await Groq.analyzeEmailContent(contentForAI, {
               persona,
-              categories: customCategories.length
-                ? customCategories.map((c) => ({
-                    name: c.name,
-                    description: c.description ?? "",
-                  }))
-                : undefined,
+              categories: allowedCategories,
               threadHistory,
               contactNotes: contactMemory?.notes,
             });
-            parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+            // Validated against the allowed set — an injected model cannot
+            // emit an arbitrary category (which becomes a Gmail label).
+            parsedResponse = Groq.getCategoryNResponseMail(
+              AIResponse,
+              allowedCategories
+            );
 
             // If AI picked a user-defined category that has dontReply or a
             // hardcoded template, honor those.
