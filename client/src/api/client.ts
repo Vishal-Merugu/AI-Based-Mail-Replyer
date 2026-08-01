@@ -45,6 +45,8 @@ export type ConnectedAccount = {
   lastHistoryId?: string;
   autoSend?: boolean;
   followUp?: FollowUpConfig;
+  /** When the Gmail push subscription lapses; renewed daily server-side. */
+  watchExpiration?: string | null;
   createdAt: string;
   updatedAt: string;
 };

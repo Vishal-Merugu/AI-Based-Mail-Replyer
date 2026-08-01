@@ -280,6 +280,37 @@ export async function getThreadMessages(
   }
 }
 
+/**
+ * (Re-)establish the Gmail push notification subscription for a mailbox.
+ *
+ * Gmail watches expire after ~7 days. Calling this is idempotent — Google
+ * simply resets the clock — so it is safe to run on a schedule. Returns the
+ * new expiration so callers can persist it and drive renewal.
+ */
+export async function establishWatch(
+  creds: Credentials,
+  emailId: string
+): Promise<{ historyId?: string; expiration?: Date }> {
+  const auth = createGmailAuth(creds, emailId);
+
+  const res = await gmail.users.watch({
+    userId: "me",
+    requestBody: {
+      labelIds: ["INBOX"],
+      topicName: ENV.GC_TOPIC_NAME,
+    },
+    auth,
+  });
+
+  return {
+    historyId: res.data.historyId ?? undefined,
+    // Gmail returns expiration as epoch milliseconds in a string.
+    expiration: res.data.expiration
+      ? new Date(Number(res.data.expiration))
+      : undefined,
+  };
+}
+
 export async function listHistory(
   startHistoryId: string,
   auth: OAuth2Client

@@ -18,6 +18,9 @@ const mailMetaSchema = new Schema(
     id_token: String,
     expiry_date: Date,
     lastHistoryId: String,
+    // Gmail watch subscriptions expire after ~7 days and must be renewed or
+    // the account silently stops receiving Pub/Sub notifications.
+    watchExpiration: { type: Date, index: true },
     autoSend: { type: Boolean, default: true },
     followUp: {
       enabled: { type: Boolean, default: false },

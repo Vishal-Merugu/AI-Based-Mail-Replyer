@@ -16,6 +16,7 @@ import ListItemText from "@mui/material/ListItemText";
 import Avatar from "@mui/material/Avatar";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import Chip from "@mui/material/Chip";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Tooltip from "@mui/material/Tooltip";
@@ -225,7 +226,24 @@ export function ConnectEmail(): JSX.Element {
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
-                    primary={account.emailID}
+                    primary={
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        component="span"
+                      >
+                        <span>{account.emailID}</span>
+                        {account.watchExpiration &&
+                          new Date(account.watchExpiration) <= new Date() && (
+                            <Chip
+                              size="small"
+                              color="warning"
+                              label="Reconnect needed"
+                            />
+                          )}
+                      </Stack>
+                    }
                     secondary={
                       <Typography variant="caption" color="text.secondary">
                         Connected{" "}

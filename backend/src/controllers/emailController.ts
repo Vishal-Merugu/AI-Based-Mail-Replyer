@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import {
-  establishWatcher,
   exchangeCodeForToken,
   generateGmailOAuthUrl,
   getProfileInfo,
 } from "../utils/OAuthMethods";
+import { establishWatch } from "../consumers/gmailService";
 import { emailQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
 import { decodePubSubMessage } from "../utils/misc";
@@ -70,6 +70,18 @@ export const handleRedirect = async (req: Request, res: Response) => {
       throw Error("Google profile lookup returned no email address");
     }
 
+    // Start the watch first so we can persist its expiration (needed by the
+    // daily renewal sweep) and its historyId (a correct starting cursor)
+    // in the same write.
+    const watch = await establishWatch(
+      {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        id_token: tokens.id_token,
+      },
+      profileInfo.email
+    );
+
     await MailMetaModel.findOneAndUpdate(
       {
         userId,
@@ -81,13 +93,13 @@ export const handleRedirect = async (req: Request, res: Response) => {
         refresh_token: tokens.refresh_token,
         expiry_date: new Date(tokens.expiry_date as number),
         id_token: tokens.id_token,
+        watchExpiration: watch.expiration ?? null,
+        ...(watch.historyId ? { lastHistoryId: watch.historyId } : {}),
       },
       {
         upsert: true,
       }
     );
-
-    await establishWatcher(tokens.access_token);
 
     res.send(`
     <script>

@@ -20,3 +20,7 @@ export const followUpQueue = new Queue("followUpQueue", {
 export const digestQueue = new Queue("digestQueue", {
   connection: redisConnection,
 });
+
+export const watchQueue = new Queue("watchQueue", {
+  connection: redisConnection,
+});

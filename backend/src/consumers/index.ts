@@ -7,6 +7,7 @@ import { redisConnection } from "../queue";
 import startEmailWorker from "./emailWorker";
 import startFollowUpWorker from "./followUpWorker";
 import startDigestWorker from "./digestWorker";
+import startWatchRenewalWorker from "./watchRenewalWorker";
 
 mongoose
   .connect(ENV.MONGO_URL)
@@ -15,7 +16,10 @@ mongoose
     startEmailWorker({ connection: redisConnection });
     startFollowUpWorker({ connection: redisConnection });
     startDigestWorker({ connection: redisConnection });
-    logger.info("Consumers started (email + follow-up + digest workers)");
+    startWatchRenewalWorker({ connection: redisConnection });
+    logger.info(
+      "Consumers started (email + follow-up + digest + watch-renewal workers)"
+    );
   })
   .catch((err) => {
     logger.error({ err }, "Failed to start consumers");

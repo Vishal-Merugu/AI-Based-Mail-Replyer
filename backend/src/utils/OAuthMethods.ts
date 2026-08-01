@@ -1,12 +1,10 @@
-import { GoogleApis, gmail_v1, oauth2_v2 } from "googleapis";
-import { GaxiosPromise } from "gaxios";
+import { GoogleApis, oauth2_v2 } from "googleapis";
 import { Credentials, OAuth2Client } from "google-auth-library";
 
 import ENV from "./validateEnv";
 import { logger } from "./logger";
 
 const google = new GoogleApis();
-const gmail = google.gmail("v1");
 
 /**
  * Fresh OAuth2 client per call — `setCredentials`/`getToken` mutate the
@@ -59,21 +57,9 @@ export async function exchangeCodeForToken(code: string): Promise<Credentials> {
   return tokens;
 }
 
-export function establishWatcher(
-  access_token: string
-): GaxiosPromise<gmail_v1.Schema$WatchResponse> {
-  const oauth2Client = createOAuthClient();
-  oauth2Client.setCredentials({ access_token });
-
-  return gmail.users.watch({
-    userId: "me",
-    requestBody: {
-      labelIds: ["INBOX"],
-      topicName: ENV.GC_TOPIC_NAME,
-    },
-    auth: oauth2Client,
-  });
-}
+// Gmail watch lives in consumers/gmailService (establishWatch) so that it
+// shares the per-request client with token-refresh persistence and can be
+// driven by the renewal worker.
 
 export const getProfileInfo = async (
   access_token: string
