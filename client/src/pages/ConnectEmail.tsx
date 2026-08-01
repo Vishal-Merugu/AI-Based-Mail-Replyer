@@ -16,11 +16,19 @@ import ListItemText from "@mui/material/ListItemText";
 import Avatar from "@mui/material/Avatar";
 import CircularProgress from "@mui/material/CircularProgress";
 import Typography from "@mui/material/Typography";
+import Switch from "@mui/material/Switch";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Tooltip from "@mui/material/Tooltip";
 import MarkEmailReadRoundedIcon from "@mui/icons-material/MarkEmailReadRounded";
 import InboxRoundedIcon from "@mui/icons-material/InboxRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
-import { API_URL, ConnectedAccount, fetchAccounts } from "../api/client";
+import {
+  API_URL,
+  ConnectedAccount,
+  fetchAccounts,
+  updateAccountSettings,
+} from "../api/client";
 import { EmptyState } from "../components/EmptyState";
 
 export function ConnectEmail(): JSX.Element {
@@ -130,16 +138,59 @@ export function ConnectEmail(): JSX.Element {
                 <ListItem
                   key={account._id}
                   disableGutters
+                  sx={{ flexWrap: "wrap", gap: 1 }}
                   secondaryAction={
-                    <Button
-                      size="small"
-                      startIcon={<TuneRoundedIcon />}
-                      onClick={() =>
-                        navigate(`/accounts/${account._id}/persona`)
-                      }
-                    >
-                      Persona
-                    </Button>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Tooltip
+                        title={
+                          account.autoSend !== false
+                            ? "Replies are sent automatically. Turn off to review each draft."
+                            : "Drafts land in the Outbox for your review."
+                        }
+                      >
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              size="small"
+                              checked={account.autoSend !== false}
+                              onChange={async (_, checked) => {
+                                setAccounts((prev) =>
+                                  prev.map((a) =>
+                                    a._id === account._id
+                                      ? { ...a, autoSend: checked }
+                                      : a
+                                  )
+                                );
+                                try {
+                                  await updateAccountSettings(account._id, {
+                                    autoSend: checked,
+                                  });
+                                } catch (err) {
+                                  console.error(err);
+                                  loadAccounts();
+                                }
+                              }}
+                            />
+                          }
+                          label={
+                            <Typography variant="body2">
+                              {account.autoSend !== false
+                                ? "Auto-send"
+                                : "Review"}
+                            </Typography>
+                          }
+                        />
+                      </Tooltip>
+                      <Button
+                        size="small"
+                        startIcon={<TuneRoundedIcon />}
+                        onClick={() =>
+                          navigate(`/accounts/${account._id}/persona`)
+                        }
+                      >
+                        Persona
+                      </Button>
+                    </Stack>
                   }
                 >
                   <ListItemAvatar>

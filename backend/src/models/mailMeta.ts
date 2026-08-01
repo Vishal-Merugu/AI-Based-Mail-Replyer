@@ -18,6 +18,7 @@ const mailMetaSchema = new Schema(
     id_token: String,
     expiry_date: Date,
     lastHistoryId: String,
+    autoSend: { type: Boolean, default: true },
     persona: {
       name: { type: String, default: "" },
       tone: { type: String, default: "professional" },

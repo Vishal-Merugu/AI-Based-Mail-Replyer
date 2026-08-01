@@ -37,8 +37,21 @@ export type ConnectedAccount = {
   _id: string;
   emailID: string;
   lastHistoryId?: string;
+  autoSend?: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+export type PendingDraft = {
+  _id: string;
+  emailID: string;
+  from?: string;
+  to?: string;
+  subject?: string;
+  incomingSnippet?: string;
+  draftBody?: string;
+  category?: string;
+  createdAt: string;
 };
 
 export type ProcessedEmailActivity = {
@@ -107,4 +120,28 @@ export async function savePersona(
 ): Promise<{ persona: Persona }> {
   const res = await apiClient.put(`/accounts/${accountId}/persona`, persona);
   return res.data;
+}
+
+export async function updateAccountSettings(
+  accountId: string,
+  settings: { autoSend: boolean }
+): Promise<{ autoSend: boolean }> {
+  const res = await apiClient.put(`/accounts/${accountId}/settings`, settings);
+  return res.data;
+}
+
+export async function fetchDrafts(): Promise<PendingDraft[]> {
+  const res = await apiClient.get<PendingDraft[]>("/drafts");
+  return res.data;
+}
+
+export async function approveDraft(
+  draftId: string,
+  updates?: { draftBody?: string; category?: string }
+): Promise<void> {
+  await apiClient.post(`/drafts/${draftId}/approve`, updates ?? {});
+}
+
+export async function rejectDraft(draftId: string): Promise<void> {
+  await apiClient.post(`/drafts/${draftId}/reject`);
 }

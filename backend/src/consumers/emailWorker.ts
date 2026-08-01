@@ -10,6 +10,7 @@ import {
 } from "./gmailService";
 import GroqChatHandler from "../services/groqService";
 import ProcessedEmailModel from "../models/processedEmail";
+import PendingDraftModel from "../models/pendingDraft";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
 
@@ -27,8 +28,16 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
       if (!mailMetaDoc || !mailMetaDoc.access_token)
         throw Error("MAIL with acces token was not registered");
 
-      const { access_token, id_token, refresh_token, lastHistoryId, userId, persona } =
-        mailMetaDoc as any;
+      const {
+        _id: accountId,
+        access_token,
+        id_token,
+        refresh_token,
+        lastHistoryId,
+        userId,
+        persona,
+        autoSend,
+      } = mailMetaDoc as any;
 
       const mailObjects = await fetchEmails(emailAddress, {
         lastHistoryId: lastHistoryId ?? historyId,
@@ -49,6 +58,25 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
           );
 
           const parsedResponse = Groq.getCategoryNResponseMail(AIResponse);
+
+          // Review-mode: park the draft in the outbox instead of sending.
+          if (autoSend === false) {
+            await PendingDraftModel.create({
+              userId,
+              accountId,
+              emailID: emailAddress,
+              threadId: mailObj.threadId,
+              messageId: mailObj["Message-Id"],
+              from: mailObj.From,
+              to: mailObj.To,
+              subject: "Re: " + mailObj.Subject,
+              incomingSnippet: mailObj.mailContent,
+              draftBody: parsedResponse.responseMail,
+              category: parsedResponse.category,
+              status: "pending",
+            });
+            return;
+          }
 
           const creds = {
             access_token,

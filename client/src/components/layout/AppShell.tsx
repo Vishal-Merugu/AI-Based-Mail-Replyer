@@ -36,6 +36,7 @@ import { Dashboard } from "../../pages/Dashboard";
 import { LoginPage } from "../../pages/Login";
 import { SignupPage } from "../../pages/Signup";
 import { PersonaEditor } from "../../pages/PersonaEditor";
+import { Outbox } from "../../pages/Outbox";
 
 export function AppShell() {
   const theme = useTheme();
@@ -212,6 +213,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <PersonaEditor />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/outbox"
+            element={
+              <RequireAuth>
+                <Outbox />
               </RequireAuth>
             }
           />

@@ -1,6 +1,7 @@
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import AlternateEmailRoundedIcon from "@mui/icons-material/AlternateEmailRounded";
 import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import DraftsRoundedIcon from "@mui/icons-material/DraftsRounded";
 
 export type NavItem = {
   label: string;
@@ -15,5 +16,6 @@ export const navItems: NavItem[] = [
     path: "/connect_email",
     icon: <AlternateEmailRoundedIcon />,
   },
+  { label: "Outbox", path: "/outbox", icon: <DraftsRoundedIcon /> },
   { label: "Dashboard", path: "/dashboard", icon: <DashboardRoundedIcon /> },
 ];
