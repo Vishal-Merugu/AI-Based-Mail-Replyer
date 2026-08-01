@@ -26,6 +26,11 @@ import {
 } from "../services/notifications";
 import { tryConsumeReply } from "../services/quota";
 import {
+  claimMessage,
+  completeMessageClaim,
+  releaseMessageClaim,
+} from "../services/messageClaims";
+import {
   MailboxBusyError,
   acquireMailboxLock,
   releaseMailboxLock,
@@ -156,6 +161,11 @@ async function processMailbox(emailAddress: string, historyId: string) {
       );
     }
 
+    // Tracked so `finally` can settle the claim on every exit path — the
+    // block below has four separate `return`s plus the throw path.
+    let claimed = false;
+    let failed = false;
+
     try {
       const ruleMatch = evaluateRules(userRules as any, {
         From: mailObj.From,
@@ -166,6 +176,18 @@ async function processMailbox(emailAddress: string, historyId: string) {
         logger.info(
           { from: mailObj.From, threadId: mailObj.threadId },
           "Rule matched: skipping reply",
+        );
+        return;
+      }
+
+      // Idempotency gate. Pub/Sub is at-least-once and BullMQ retries failed
+      // jobs, so without this a job that dies after sending re-sends the same
+      // reply. Claim before any spend (LLM) or irreversible action (send).
+      claimed = await claimMessage(String(userId), mailObj.gmailMessageId);
+      if (!claimed) {
+        logger.info(
+          { gmailMessageId: mailObj.gmailMessageId, from: mailObj.From },
+          "Message already handled — skipping duplicate delivery",
         );
         return;
       }
@@ -364,6 +386,7 @@ async function processMailbox(emailAddress: string, historyId: string) {
         );
       }
     } catch (err: any) {
+      failed = true;
       // Isolate failures per-message so one bad thread doesn't fail
       // the whole job and cause already-replied messages to be redone.
       logger.error(
@@ -375,6 +398,28 @@ async function processMailbox(emailAddress: string, historyId: string) {
         emailAddress,
         err?.message || String(err),
       ).catch(() => undefined);
+    } finally {
+      // Runs on every exit above, including the early returns.
+      if (claimed) {
+        if (failed) {
+          // Hand the message back so a retry can legitimately redo it.
+          await releaseMessageClaim(
+            String(userId),
+            mailObj.gmailMessageId,
+          ).catch((e) =>
+            logger.error({ err: e }, "Failed to release message claim"),
+          );
+        } else {
+          // Decided (replied, drafted, suppressed or over quota) — never
+          // process this message again.
+          await completeMessageClaim(
+            String(userId),
+            mailObj.gmailMessageId,
+          ).catch((e) =>
+            logger.error({ err: e }, "Failed to complete message claim"),
+          );
+        }
+      }
     }
   });
 

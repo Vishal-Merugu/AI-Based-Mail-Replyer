@@ -24,8 +24,11 @@ const followUpSchema = new Schema(
     maxAttempts: { type: Number, default: 2 },
     intervalDays: { type: Number, default: 3 },
     status: {
+      // "sending" is a claimed-but-not-confirmed state. A job that dies
+      // between the Gmail send and the status write stays here rather than
+      // reverting to "pending", because re-sending is worse than not.
       type: String,
-      enum: ["pending", "sent", "cancelled"],
+      enum: ["pending", "sending", "sent", "cancelled"],
       default: "pending",
       index: true,
     },

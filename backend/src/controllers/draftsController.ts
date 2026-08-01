@@ -31,18 +31,31 @@ export const approveDraft = async (req: Request, res: Response) => {
   try {
     const { draftBody, category } = req.body ?? {};
 
-    const draft = await PendingDraftModel.findOne({
-      _id: req.params.draftId,
-      userId: req.user!.userId,
-      status: "pending",
-    });
+    // Atomically claim the draft. A plain findOne let two concurrent
+    // approvals both pass the status check and both dispatch the reply.
+    const draft = await PendingDraftModel.findOneAndUpdate(
+      {
+        _id: req.params.draftId,
+        userId: req.user!.userId,
+        status: "pending",
+      },
+      { status: "sending" },
+      { new: true }
+    );
     if (!draft) {
-      res.status(404).send({ message: "Draft not found" });
+      res.status(404).send({ message: "Draft not found or already sent" });
       return;
     }
 
-    const account = await MailMetaModel.findById(draft.accountId);
+    const account = await MailMetaModel.findOne({
+      _id: draft.accountId,
+      userId: req.user!.userId,
+    });
     if (!account || !account.access_token) {
+      // Nothing was dispatched, so it is safe to un-claim and let the user
+      // retry once the account is reconnected.
+      draft.status = "pending";
+      await draft.save();
       res.status(400).send({ message: "Sending account is no longer available" });
       return;
     }
@@ -93,6 +106,9 @@ export const approveDraft = async (req: Request, res: Response) => {
 
     res.status(200).send({ ok: true });
   } catch (err: any) {
+    // Deliberately NOT reverting to "pending": the failure may have occurred
+    // after Gmail accepted the message, and a re-approval would double-send.
+    // The draft stays in "sending" for manual inspection.
     logger.error({ err }, "Error approving draft");
     res.status(500).send({ message: "Internal Server Error" });
   }

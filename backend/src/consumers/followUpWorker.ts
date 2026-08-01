@@ -4,6 +4,7 @@ import { followUpQueue } from "../queue";
 import FollowUpModel from "../models/followUp";
 import MailMetaModel from "../models/mailMeta";
 import { logger } from "../utils/logger";
+import { tryConsumeReply } from "../services/quota";
 import { sendReply } from "./gmailService";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -13,15 +14,35 @@ export default function startFollowUpWorker(workerOptions: WorkerOptions) {
     followUpQueue.name,
     async (job) => {
       const { followUpId } = job.data;
-      const followUp = await FollowUpModel.findById(followUpId);
-      if (!followUp || followUp.status !== "pending") {
-        logger.info({ followUpId }, "Follow-up no longer pending, skipping");
+
+      // Atomically claim it. A plain findById + status check let a retried
+      // job (send succeeded, status write failed) send the follow-up twice.
+      const followUp = await FollowUpModel.findOneAndUpdate(
+        { _id: followUpId, status: "pending" },
+        { status: "sending" },
+        { new: true }
+      );
+      if (!followUp) {
+        logger.info(
+          { followUpId },
+          "Follow-up not pending (already sent, cancelled or in flight) — skipping"
+        );
         return;
       }
 
       const account = await MailMetaModel.findById(followUp.accountId);
       if (!account || !account.access_token) {
         logger.warn({ followUpId }, "Account gone, cancelling follow-up");
+        followUp.status = "cancelled";
+        await followUp.save();
+        return;
+      }
+
+      // Follow-ups previously bypassed billing entirely — they send real
+      // mail and must draw from the same monthly allowance.
+      const withinQuota = await tryConsumeReply(String(followUp.userId));
+      if (!withinQuota) {
+        logger.warn({ followUpId }, "Quota exceeded — cancelling follow-up");
         followUp.status = "cancelled";
         await followUp.save();
         return;

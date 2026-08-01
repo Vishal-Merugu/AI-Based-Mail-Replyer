@@ -27,8 +27,10 @@ const pendingDraftSchema = new Schema(
     draftBody: String,
     category: String,
     status: {
+      // "sending" is claimed-but-unconfirmed — it stops two concurrent
+      // approvals from both dispatching the same draft.
       type: String,
-      enum: ["pending", "approved", "rejected"],
+      enum: ["pending", "sending", "approved", "rejected"],
       default: "pending",
       index: true,
     },
