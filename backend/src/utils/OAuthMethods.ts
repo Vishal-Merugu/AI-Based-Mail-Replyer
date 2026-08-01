@@ -1,18 +1,25 @@
 import { GoogleApis, gmail_v1, oauth2_v2 } from "googleapis";
 import { GaxiosPromise } from "gaxios";
-import { Credentials } from "google-auth-library";
+import { Credentials, OAuth2Client } from "google-auth-library";
 
 import ENV from "./validateEnv";
+import { logger } from "./logger";
 
 const google = new GoogleApis();
-const googleOAuth2 = google.auth.OAuth2;
 const gmail = google.gmail("v1");
 
-const oauth2Client = new googleOAuth2(
-  ENV.GOOGLE_CLIENT_ID,
-  ENV.GOOGLE_CLIENT_SECRET,
-  ENV.GOOGLE_REDIRECT_URI
-);
+/**
+ * Fresh OAuth2 client per call — `setCredentials`/`getToken` mutate the
+ * instance, so sharing one across requests lets concurrent users clobber
+ * each other's credentials.
+ */
+function createOAuthClient(): OAuth2Client {
+  return new google.auth.OAuth2(
+    ENV.GOOGLE_CLIENT_ID,
+    ENV.GOOGLE_CLIENT_SECRET,
+    ENV.GOOGLE_REDIRECT_URI
+  );
+}
 
 const scopes = [
   "email",
@@ -32,21 +39,22 @@ export function generateGmailOAuthUrl({
   emailId: string;
   state?: string;
 }): string {
-  let login_hint;
+  const oauth2Client = createOAuthClient();
 
+  let login_hint;
   if (emailId) login_hint = emailId;
 
-  let url = oauth2Client.generateAuthUrl({
+  return oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
     login_hint: login_hint,
     state,
   });
-  return url;
 }
 
 export async function exchangeCodeForToken(code: string): Promise<Credentials> {
+  const oauth2Client = createOAuthClient();
   const { tokens } = await oauth2Client.getToken(code);
   return tokens;
 }
@@ -54,10 +62,11 @@ export async function exchangeCodeForToken(code: string): Promise<Credentials> {
 export function establishWatcher(
   access_token: string
 ): GaxiosPromise<gmail_v1.Schema$WatchResponse> {
+  const oauth2Client = createOAuthClient();
   oauth2Client.setCredentials({ access_token });
 
   return gmail.users.watch({
-    userId: "ME",
+    userId: "me",
     requestBody: {
       labelIds: ["INBOX"],
       topicName: ENV.GC_TOPIC_NAME,
@@ -66,19 +75,21 @@ export function establishWatcher(
   });
 }
 
-export const getProfileInfo = (
+export const getProfileInfo = async (
   access_token: string
 ): Promise<oauth2_v2.Schema$Userinfo | undefined> => {
-  return new Promise((resolve, reject) => {
-    const oauth2Client = new googleOAuth2();
-    oauth2Client.setCredentials({ access_token });
+  const oauth2Client = createOAuthClient();
+  oauth2Client.setCredentials({ access_token });
 
-    const oauth2 = google.oauth2({
-      auth: oauth2Client,
-      version: "v2",
-    });
-    oauth2.userinfo.get(function (err, res) {
-      return resolve(res?.data);
-    });
-  });
+  const oauth2 = google.oauth2({ auth: oauth2Client, version: "v2" });
+
+  try {
+    const res = await oauth2.userinfo.get();
+    return res.data;
+  } catch (err) {
+    // Previously this error was silently swallowed, which made a failed
+    // profile lookup surface much later as a confusing validation error.
+    logger.error({ err }, "Failed to fetch Google profile info");
+    throw err;
+  }
 };

@@ -59,10 +59,16 @@ export const handleRedirect = async (req: Request, res: Response) => {
 
     const profileInfo = await getProfileInfo(tokens.access_token);
 
+    if (!profileInfo?.email) {
+      // Without an address we cannot key the account record — fail loudly
+      // rather than upserting a document with an undefined emailID.
+      throw Error("Google profile lookup returned no email address");
+    }
+
     await MailMetaModel.findOneAndUpdate(
       {
         userId,
-        emailID: profileInfo?.email,
+        emailID: profileInfo.email,
       },
       {
         userId,

@@ -1,7 +1,7 @@
 import Bluebird from "bluebird";
 import { FilterQuery, QueryOptions, UpdateQuery } from "mongoose";
 import { GoogleApis, gmail_v1 } from "googleapis";
-import { Credentials } from "google-auth-library";
+import { Credentials, OAuth2Client } from "google-auth-library";
 
 import ENV from "../utils/validateEnv";
 import MailMetaModel, { MailMeta } from "../models/mailMeta";
@@ -9,14 +9,57 @@ import { encodeEmail } from "../utils/misc";
 import { logger } from "../utils/logger";
 
 const google = new GoogleApis();
-const googleOAuth2 = google.auth.OAuth2;
 
-const oAuth2Client = new googleOAuth2(
-  ENV.GOOGLE_CLIENT_ID,
-  ENV.GOOGLE_CLIENT_SECRET,
-  ENV.GOOGLE_REDIRECT_URI
-);
+// The `gmail` API wrapper is stateless — credentials are supplied per call via
+// the `auth` option — so it is safe to share across users.
 const gmail = google.gmail("v1");
+
+/**
+ * Build a FRESH OAuth2 client for a single operation.
+ *
+ * This must never be hoisted into a module-level singleton: `setCredentials`
+ * mutates the client, so a shared instance lets one user's tokens overwrite
+ * another's between the setCredentials call and the API call — which sends
+ * mail from the wrong mailbox. One client per operation is the isolation
+ * boundary.
+ */
+function createGmailAuth(creds: Credentials, emailId?: string): OAuth2Client {
+  const auth = new google.auth.OAuth2(
+    ENV.GOOGLE_CLIENT_ID,
+    ENV.GOOGLE_CLIENT_SECRET,
+    ENV.GOOGLE_REDIRECT_URI
+  );
+
+  auth.setCredentials(creds);
+
+  if (emailId) {
+    // googleapis auto-refreshes an expired access_token on the next API call
+    // and emits 'tokens' with the new value — persist it so we don't keep
+    // using a stale token (and silently fail) on subsequent jobs. The client
+    // is per-operation, so this listener cannot accumulate or fire against
+    // another account's record.
+    auth.on("tokens", (tokens) => {
+      if (!tokens.access_token) return;
+
+      findOneAndUpdateMailModel(
+        { emailID: emailId },
+        {
+          access_token: tokens.access_token,
+          ...(tokens.refresh_token
+            ? { refresh_token: tokens.refresh_token }
+            : {}),
+          ...(tokens.expiry_date
+            ? { expiry_date: new Date(tokens.expiry_date) }
+            : {}),
+        }
+      ).catch((err) =>
+        logger.error({ err, emailId }, "Failed to persist refreshed token")
+      );
+    });
+  }
+
+  return auth;
+}
 
 const MAIL_HEADER_KEYS = [
   "To",
@@ -72,8 +115,7 @@ export async function fetchEmails(
   fetchMailProps: fetchMailProps
 ): Promise<fetchEmailsReturn> {
   try {
-    setCredentialsForOAuth(
-      oAuth2Client,
+    const auth = createGmailAuth(
       {
         access_token: fetchMailProps.access_token,
         refresh_token: fetchMailProps.refresh_token,
@@ -82,7 +124,7 @@ export async function fetchEmails(
       emailId
     );
 
-    const history = await listHistory(fetchMailProps.lastHistoryId);
+    const history = await listHistory(fetchMailProps.lastHistoryId, auth);
 
     findOneAndUpdateMailModel(
       { emailID: emailId },
@@ -99,9 +141,9 @@ export async function fetchEmails(
             messageId &&
               messagePromises.push(
                 gmail.users.messages.get({
-                  userId: "ME",
+                  userId: "me",
                   id: messageId,
-                  auth: oAuth2Client,
+                  auth,
                   format: "full",
                 })
               );
@@ -129,14 +171,14 @@ export async function fetchEmails(
         }
       );
 
-      return Promise.resolve(messages as fetchEmailsReturn);
-    } else {
-      logger.info("No new messages since last checked.");
-      return Promise.resolve([]);
+      return messages as fetchEmailsReturn;
     }
+
+    logger.info("No new messages since last checked.");
+    return [];
   } catch (error) {
     logger.error({ error }, "Gmail API returned an error while fetching emails");
-    return Promise.resolve([]);
+    return [];
   }
 }
 
@@ -145,13 +187,13 @@ export async function extractAttachmentText(
   creds: Credentials,
   emailId?: string
 ): Promise<string> {
-  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+  const auth = createGmailAuth(creds, emailId);
 
   try {
     const msg = await gmail.users.messages.get({
       userId: "me",
       id: messageId,
-      auth: oAuth2Client,
+      auth,
       format: "full",
     });
 
@@ -185,7 +227,7 @@ export async function extractAttachmentText(
           userId: "me",
           messageId,
           id: att.id,
-          auth: oAuth2Client,
+          auth,
         });
         if (!res.data.data) continue;
         const buf = Buffer.from(res.data.data, "base64");
@@ -207,13 +249,13 @@ export async function getThreadMessages(
   creds: Credentials,
   emailId?: string
 ): Promise<Array<{ from: string; date: string; snippet: string }>> {
-  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+  const auth = createGmailAuth(creds, emailId);
 
   try {
     const res = await gmail.users.threads.get({
       userId: "me",
       id: threadId,
-      auth: oAuth2Client,
+      auth,
       format: "metadata",
       metadataHeaders: ["From", "Date"],
     });
@@ -238,11 +280,14 @@ export async function getThreadMessages(
   }
 }
 
-export async function listHistory(startHistoryId: string) {
+export async function listHistory(
+  startHistoryId: string,
+  auth: OAuth2Client
+) {
   const res = await gmail.users.history.list({
-    userId: "ME",
+    userId: "me",
     startHistoryId: startHistoryId ?? "",
-    auth: oAuth2Client,
+    auth,
   });
   return res.data;
 }
@@ -269,14 +314,14 @@ export async function modifyThreadAddLabel(
   creds: Credentials,
   emailId?: string
 ) {
-  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+  const auth = createGmailAuth(creds, emailId);
   await gmail.users.threads.modify({
     userId: "me",
     id: threadId,
     requestBody: {
       addLabelIds: [labelId],
     },
-    auth: oAuth2Client,
+    auth,
   });
 }
 
@@ -301,7 +346,7 @@ export async function sendReply(
   creds: Credentials,
   emailId?: string
 ) {
-  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+  const auth = createGmailAuth(creds, emailId);
 
   const raw = encodeEmail({
     from: from,
@@ -313,47 +358,13 @@ export async function sendReply(
   });
 
   await gmail.users.messages.send({
-    userId: "ME",
+    userId: "me",
     requestBody: {
       raw: raw,
       threadId: threadId,
     },
-    auth: oAuth2Client,
+    auth,
   });
-}
-
-export function setCredentialsForOAuth(
-  auth: typeof oAuth2Client,
-  creds: Credentials,
-  emailId?: string
-) {
-  auth.setCredentials(creds);
-
-  if (emailId) {
-    // googleapis auto-refreshes an expired access_token on the next API
-    // call and emits 'tokens' with the new value — persist it so we don't
-    // keep using a stale token (and silently fail) on subsequent jobs.
-    auth.once("tokens", (tokens) => {
-      if (!tokens.access_token) return;
-
-      findOneAndUpdateMailModel(
-        { emailID: emailId },
-        {
-          access_token: tokens.access_token,
-          ...(tokens.refresh_token
-            ? { refresh_token: tokens.refresh_token }
-            : {}),
-          ...(tokens.expiry_date
-            ? { expiry_date: new Date(tokens.expiry_date) }
-            : {}),
-        }
-      ).catch((err) =>
-        logger.error({ err, emailId }, "Failed to persist refreshed token")
-      );
-    });
-  }
-
-  return auth;
 }
 
 export async function createLabelOrGetExisting(
@@ -361,11 +372,11 @@ export async function createLabelOrGetExisting(
   creds: Credentials,
   emailId?: string
 ): Promise<string> {
-  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+  const auth = createGmailAuth(creds, emailId);
 
   const labelsRes = await gmail.users.labels.list({
     userId: "me",
-    auth: oAuth2Client,
+    auth,
   });
 
   const existingLabels = labelsRes.data.labels;
@@ -376,13 +387,13 @@ export async function createLabelOrGetExisting(
   if (existingLabel) return existingLabel.id as string;
 
   const res = await gmail.users.labels.create({
-    userId: "ME",
+    userId: "me",
     requestBody: {
       name: labelName,
       labelListVisibility: "labelShow",
       messageListVisibility: "show",
     },
-    auth: oAuth2Client,
+    auth,
   });
   return res.data.id as string;
 }
