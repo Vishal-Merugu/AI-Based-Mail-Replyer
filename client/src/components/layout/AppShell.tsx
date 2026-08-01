@@ -40,6 +40,7 @@ import { Outbox } from "../../pages/Outbox";
 import { RulesPage } from "../../pages/Rules";
 import { Analytics } from "../../pages/Analytics";
 import { Memory } from "../../pages/Memory";
+import { Notifications } from "../../pages/Notifications";
 
 export function AppShell() {
   const theme = useTheme();
@@ -248,6 +249,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <Memory />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <RequireAuth>
+                <Notifications />
               </RequireAuth>
             }
           />

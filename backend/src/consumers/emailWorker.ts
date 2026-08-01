@@ -18,6 +18,10 @@ import RuleModel from "../models/rule";
 import FollowUpModel from "../models/followUp";
 import ContactMemoryModel from "../models/contactMemory";
 import { evaluateRules } from "../services/ruleEngine";
+import {
+  notifyInterestedReply,
+  notifyJobFailure,
+} from "../services/notifications";
 import { logger } from "../utils/logger";
 import Bluebird from "bluebird";
 
@@ -228,6 +232,15 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             category: parsedResponse.category,
           });
 
+          if (parsedResponse.category === "Interested") {
+            notifyInterestedReply(
+              String(userId),
+              emailAddress,
+              mailObj.From,
+              mailObj.Subject
+            ).catch(() => undefined);
+          }
+
           if (
             followUpCfg?.enabled &&
             parsedResponse.category === "Interested" &&
@@ -264,6 +277,11 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
             { err, threadId: mailObj.threadId },
             "Failed to process message"
           );
+          notifyJobFailure(
+            String(userId),
+            emailAddress,
+            err?.message || String(err)
+          ).catch(() => undefined);
         }
       });
     },

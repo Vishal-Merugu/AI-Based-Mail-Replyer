@@ -13,6 +13,10 @@ import {
   listMemory,
   upsertMemory,
 } from "../controllers/memoryController";
+import {
+  getNotifications,
+  updateNotifications,
+} from "../controllers/notificationsController";
 
 const router = Router();
 
@@ -28,5 +32,7 @@ router.get("/analytics", getAnalytics);
 router.get("/memory", listMemory);
 router.post("/memory", upsertMemory);
 router.delete("/memory/:memoryId", deleteMemory);
+router.get("/notifications", getNotifications);
+router.put("/notifications", updateNotifications);
 
 export default router;

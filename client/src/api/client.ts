@@ -247,3 +247,25 @@ export async function upsertMemory(
 export async function deleteMemory(id: string): Promise<void> {
   await apiClient.delete(`/memory/${id}`);
 }
+
+// --- Notifications ---
+
+export type NotificationSettings = {
+  slackWebhookUrl?: string;
+  notifyOnInterested?: boolean;
+  notifyOnFailure?: boolean;
+  digestEnabled?: boolean;
+  digestCadence?: "daily" | "weekly";
+};
+
+export async function fetchNotifications(): Promise<NotificationSettings> {
+  const res = await apiClient.get<NotificationSettings>("/notifications");
+  return res.data;
+}
+
+export async function saveNotifications(
+  s: NotificationSettings
+): Promise<NotificationSettings> {
+  const res = await apiClient.put<NotificationSettings>("/notifications", s);
+  return res.data;
+}

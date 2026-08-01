@@ -16,3 +16,7 @@ export const emailQueue = new Queue("emailQueue", {
 export const followUpQueue = new Queue("followUpQueue", {
   connection: redisConnection,
 });
+
+export const digestQueue = new Queue("digestQueue", {
+  connection: redisConnection,
+});

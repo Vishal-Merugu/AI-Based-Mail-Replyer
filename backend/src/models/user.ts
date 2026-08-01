@@ -14,6 +14,17 @@ const userSchema = new Schema(
       required: true,
     },
     name: String,
+    notifications: {
+      slackWebhookUrl: { type: String, default: "" },
+      notifyOnInterested: { type: Boolean, default: true },
+      notifyOnFailure: { type: Boolean, default: true },
+      digestEnabled: { type: Boolean, default: false },
+      digestCadence: {
+        type: String,
+        enum: ["daily", "weekly"],
+        default: "weekly",
+      },
+    },
   },
   { timestamps: true }
 );

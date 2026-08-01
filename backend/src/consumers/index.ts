@@ -6,6 +6,7 @@ import { logger } from "../utils/logger";
 import { redisConnection } from "../queue";
 import startEmailWorker from "./emailWorker";
 import startFollowUpWorker from "./followUpWorker";
+import startDigestWorker from "./digestWorker";
 
 mongoose
   .connect(ENV.MONGO_URL)
@@ -13,7 +14,8 @@ mongoose
     logger.info("Mongo connection successful");
     startEmailWorker({ connection: redisConnection });
     startFollowUpWorker({ connection: redisConnection });
-    logger.info("Consumer started (email + follow-up workers)");
+    startDigestWorker({ connection: redisConnection });
+    logger.info("Consumers started (email + follow-up + digest workers)");
   })
   .catch((err) => {
     logger.error({ err }, "Failed to start consumers");
