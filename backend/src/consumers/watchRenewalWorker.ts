@@ -1,4 +1,4 @@
-import { QueueBaseOptions, Worker } from "bullmq";
+import { Worker, WorkerOptions } from "bullmq";
 
 import { watchQueue } from "../queue";
 import MailMetaModel from "../models/mailMeta";
@@ -66,7 +66,7 @@ export async function renewExpiringWatches(): Promise<{
 }
 
 export default function startWatchRenewalWorker(
-  workerOptions?: QueueBaseOptions
+  workerOptions: WorkerOptions
 ) {
   const worker = new Worker(
     watchQueue.name,

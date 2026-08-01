@@ -36,6 +36,9 @@ const pendingDraftSchema = new Schema(
   { timestamps: true }
 );
 
+// Backs GET /drafts, which filters { userId, status } and sorts by createdAt.
+pendingDraftSchema.index({ userId: 1, status: 1, createdAt: -1 });
+
 export type PendingDraft = InferSchemaType<typeof pendingDraftSchema>;
 
 export default model<PendingDraft>("pendingdrafts", pendingDraftSchema);

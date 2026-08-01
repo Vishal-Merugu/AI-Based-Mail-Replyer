@@ -1,4 +1,4 @@
-import { QueueBaseOptions, Worker } from "bullmq";
+import { Worker, WorkerOptions } from "bullmq";
 import mongoose from "mongoose";
 
 import { digestQueue } from "../queue";
@@ -35,7 +35,7 @@ async function buildDigestFor(userId: string, windowDays: number): Promise<strin
   return `*Mail Replyer digest (last ${label}):* ${total} emails processed\n${breakdown}`;
 }
 
-export default function startDigestWorker(workerOptions?: QueueBaseOptions) {
+export default function startDigestWorker(workerOptions: WorkerOptions) {
   const worker = new Worker(
     digestQueue.name,
     async () => {

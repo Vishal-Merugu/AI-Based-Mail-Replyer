@@ -33,6 +33,9 @@ const followUpSchema = new Schema(
   { timestamps: true }
 );
 
+// Backs the cancel-on-reply sweep, which filters { accountId, threadId, status }.
+followUpSchema.index({ accountId: 1, threadId: 1, status: 1 });
+
 export type FollowUp = InferSchemaType<typeof followUpSchema>;
 
 export default model<FollowUp>("followups", followUpSchema);

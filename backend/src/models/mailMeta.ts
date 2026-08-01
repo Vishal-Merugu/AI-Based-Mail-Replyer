@@ -37,6 +37,11 @@ const mailMetaSchema = new Schema(
   { timestamps: true }
 );
 
+// One record per (user, mailbox). Without this a repeated OAuth flow could
+// create duplicate accounts, and the worker's lookup-by-emailID would pick
+// an arbitrary one.
+mailMetaSchema.index({ userId: 1, emailID: 1 }, { unique: true });
+
 // OAuth tokens grant full Gmail read/send access — never store them in
 // plaintext. These hooks make encryption/decryption transparent to callers.
 const SECRET_FIELDS = ["access_token", "refresh_token", "id_token"] as const;

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 
 import ENV from "../utils/validateEnv";
 import { logger } from "../utils/logger";
-import { redisConnection } from "../queue";
+import { createWorkerConnection } from "../queue";
 import startEmailWorker from "./emailWorker";
 import startFollowUpWorker from "./followUpWorker";
 import startDigestWorker from "./digestWorker";
@@ -13,12 +13,20 @@ mongoose
   .connect(ENV.MONGO_URL)
   .then(() => {
     logger.info("Mongo connection successful");
-    startEmailWorker({ connection: redisConnection });
-    startFollowUpWorker({ connection: redisConnection });
-    startDigestWorker({ connection: redisConnection });
-    startWatchRenewalWorker({ connection: redisConnection });
+
+    // Each worker gets its own Redis connection: BullMQ workers block on
+    // BRPOPLPUSH, and a blocked connection cannot serve the other queues.
+    startEmailWorker({
+      connection: createWorkerConnection(),
+      concurrency: ENV.EMAIL_WORKER_CONCURRENCY,
+    });
+    startFollowUpWorker({ connection: createWorkerConnection() });
+    startDigestWorker({ connection: createWorkerConnection() });
+    startWatchRenewalWorker({ connection: createWorkerConnection() });
+
     logger.info(
-      "Consumers started (email + follow-up + digest + watch-renewal workers)"
+      { emailConcurrency: ENV.EMAIL_WORKER_CONCURRENCY },
+      "Consumers started (email + follow-up + digest + watch-renewal workers)",
     );
   })
   .catch((err) => {

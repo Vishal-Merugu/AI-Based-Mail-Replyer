@@ -30,6 +30,11 @@ processedEmailSchema.index({
   createdAt: -1,
 });
 
+// Backs /activity (sort by createdAt desc) and every /analytics aggregation,
+// all of which filter { userId, createdAt } — a userId-only index made those
+// scan the whole per-user history.
+processedEmailSchema.index({ userId: 1, createdAt: -1 });
+
 export type ProcessedEmail = InferSchemaType<typeof processedEmailSchema>;
 
 export default model<ProcessedEmail>("processedemails", processedEmailSchema);

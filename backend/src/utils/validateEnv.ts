@@ -1,4 +1,4 @@
-import { cleanEnv, str, port, num } from "envalid";
+import { cleanEnv, str, port, num, bool } from "envalid";
 
 export default cleanEnv(process.env, {
   NODE_ENV: str({
@@ -9,6 +9,11 @@ export default cleanEnv(process.env, {
   MONGO_URL: str(),
   REDIS_HOST: str({ default: "127.0.0.1" }),
   REDIS_PORT: port({ default: 6379 }),
+  REDIS_PASSWORD: str({ default: "" }),
+  REDIS_TLS: bool({ default: false }),
+  // Messages processed in parallel per worker. Default was 1, which
+  // serialized every mailbox on the platform behind a single LLM call.
+  EMAIL_WORKER_CONCURRENCY: num({ default: 5 }),
   GOOGLE_CLIENT_ID: str(),
   GOOGLE_CLIENT_SECRET: str(),
   GOOGLE_REDIRECT_URI: str(),

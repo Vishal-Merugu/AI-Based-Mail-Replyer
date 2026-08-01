@@ -1,4 +1,4 @@
-import { QueueBaseOptions, Worker } from "bullmq";
+import { Worker, WorkerOptions } from "bullmq";
 
 import { followUpQueue } from "../queue";
 import FollowUpModel from "../models/followUp";
@@ -8,7 +8,7 @@ import { sendReply } from "./gmailService";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export default function startFollowUpWorker(workerOptions?: QueueBaseOptions) {
+export default function startFollowUpWorker(workerOptions: WorkerOptions) {
   const followUpWorker = new Worker(
     followUpQueue.name,
     async (job) => {
