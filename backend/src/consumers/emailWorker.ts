@@ -3,6 +3,7 @@ import { QueueBaseOptions, Worker } from "bullmq";
 import { emailQueue, followUpQueue } from "../queue";
 import {
   createLabelOrGetExisting,
+  extractAttachmentText,
   fetchEmails,
   getMailMetaModel,
   getThreadMessages,
@@ -110,7 +111,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
               refresh_token,
             };
 
-            const [threadHistory, contactMemory] = await Promise.all([
+            const [threadHistory, contactMemory, attachmentText] = await Promise.all([
               mailObj.threadId
                 ? getThreadMessages(mailObj.threadId, creds, emailAddress)
                 : Promise.resolve([]),
@@ -121,9 +122,20 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
                   contactEmail: addr.toLowerCase().trim(),
                 }).lean();
               })(),
+              mailObj.gmailMessageId
+                ? extractAttachmentText(
+                    mailObj.gmailMessageId,
+                    creds,
+                    emailAddress
+                  )
+                : Promise.resolve(""),
             ]);
 
-            const AIResponse = await Groq.analyzeEmailContent(mailObj.mailContent, {
+            const contentForAI = attachmentText
+              ? `${mailObj.mailContent}\n\n[Attached PDF content]\n${attachmentText}`
+              : mailObj.mailContent;
+
+            const AIResponse = await Groq.analyzeEmailContent(contentForAI, {
               persona,
               categories: customCategories.length
                 ? customCategories.map((c) => ({
@@ -201,6 +213,7 @@ export default function startEmailWorker(workerOptions?: QueueBaseOptions) {
               mailContent: parsedResponse.responseMail,
               to: mailObj.From, //from becomes to as we giving response mail to sender
               subject: "Re: " + mailObj.Subject,
+              quotedContext: mailObj.mailContent,
             },
             creds,
             emailAddress

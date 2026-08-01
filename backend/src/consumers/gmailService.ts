@@ -56,6 +56,7 @@ type fetchEmailsReturn = Array<
     threadId: string;
     mailContent: string;
     labelIds: string[];
+    gmailMessageId: string;
   }
 >;
 
@@ -116,6 +117,7 @@ export async function fetchEmails(
           if (headers) {
             return {
               threadId: message?.data?.threadId || "",
+              gmailMessageId: message?.data?.id || "",
               mailContent: message?.data?.snippet || "",
               labelIds: message?.data?.labelIds || [],
               ...extractHeaderData(headers),
@@ -135,6 +137,68 @@ export async function fetchEmails(
   } catch (error) {
     logger.error({ error }, "Gmail API returned an error while fetching emails");
     return Promise.resolve([]);
+  }
+}
+
+export async function extractAttachmentText(
+  messageId: string,
+  creds: Credentials,
+  emailId?: string
+): Promise<string> {
+  setCredentialsForOAuth(oAuth2Client, creds, emailId);
+
+  try {
+    const msg = await gmail.users.messages.get({
+      userId: "me",
+      id: messageId,
+      auth: oAuth2Client,
+      format: "full",
+    });
+
+    const attachments: Array<{ name: string; id: string; mime: string }> = [];
+    const walk = (part: any) => {
+      if (!part) return;
+      if (part.body?.attachmentId && part.filename) {
+        attachments.push({
+          name: part.filename,
+          id: part.body.attachmentId,
+          mime: part.mimeType || "",
+        });
+      }
+      (part.parts || []).forEach(walk);
+    };
+    walk(msg.data.payload);
+
+    // Only handle PDFs — cheap-and-fast, most common case.
+    const pdfs = attachments.filter((a) => a.mime === "application/pdf");
+    if (!pdfs.length) return "";
+
+    // Lazy-require to keep pdf-parse's odd top-level test file access from
+    // running when we don't need it.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const pdfParse = require("pdf-parse");
+
+    const chunks: string[] = [];
+    for (const att of pdfs.slice(0, 3)) {
+      try {
+        const res = await gmail.users.messages.attachments.get({
+          userId: "me",
+          messageId,
+          id: att.id,
+          auth: oAuth2Client,
+        });
+        if (!res.data.data) continue;
+        const buf = Buffer.from(res.data.data, "base64");
+        const parsed = await pdfParse(buf);
+        const text = (parsed?.text || "").slice(0, 4000);
+        if (text) chunks.push(`[${att.name}]\n${text}`);
+      } catch {
+        /* ignore individual attachment errors */
+      }
+    }
+    return chunks.join("\n\n");
+  } catch {
+    return "";
   }
 }
 
@@ -224,7 +288,16 @@ export async function sendReply(
     mailContent,
     to,
     subject,
-  }: Record<string, string>,
+    quotedContext,
+  }: {
+    from: string;
+    threadId: string;
+    messageId: string;
+    mailContent: string;
+    to: string;
+    subject: string;
+    quotedContext?: string;
+  },
   creds: Credentials,
   emailId?: string
 ) {
@@ -236,6 +309,7 @@ export async function sendReply(
     subject,
     messageId,
     mailContent,
+    quotedContext,
   });
 
   await gmail.users.messages.send({

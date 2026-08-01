@@ -70,6 +70,7 @@ export const approveDraft = async (req: Request, res: Response) => {
         mailContent: finalBody || "",
         to: draft.from || "",
         subject: draft.subject || "",
+        quotedContext: draft.incomingSnippet || undefined,
       },
       creds,
       draft.emailID
