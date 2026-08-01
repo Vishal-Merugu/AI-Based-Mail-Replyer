@@ -7,6 +7,7 @@ import {
   rejectDraft,
   updateAccountSettings,
 } from "../controllers/draftsController";
+import { getAnalytics } from "../controllers/analyticsController";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.get("/activity", listActivity);
 router.get("/drafts", listDrafts);
 router.post("/drafts/:draftId/approve", approveDraft);
 router.post("/drafts/:draftId/reject", rejectDraft);
+router.get("/analytics", getAnalytics);
 
 export default router;

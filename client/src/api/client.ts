@@ -196,3 +196,19 @@ export async function createRule(
 export async function deleteRule(id: string): Promise<void> {
   await apiClient.delete(`/rules/${id}`);
 }
+
+// --- Analytics ---
+
+export type AnalyticsData = {
+  daily: Array<{ date: string; count: number }>;
+  categories: Array<{ category: string; count: number }>;
+  accounts: Array<{ emailID: string; count: number }>;
+  totals: { emailsProcessed: number; rangeDays: number };
+};
+
+export async function fetchAnalytics(days = 30): Promise<AnalyticsData> {
+  const res = await apiClient.get<AnalyticsData>("/analytics", {
+    params: { days },
+  });
+  return res.data;
+}

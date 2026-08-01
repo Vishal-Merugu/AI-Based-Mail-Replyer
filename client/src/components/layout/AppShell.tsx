@@ -38,6 +38,7 @@ import { SignupPage } from "../../pages/Signup";
 import { PersonaEditor } from "../../pages/PersonaEditor";
 import { Outbox } from "../../pages/Outbox";
 import { RulesPage } from "../../pages/Rules";
+import { Analytics } from "../../pages/Analytics";
 
 export function AppShell() {
   const theme = useTheme();
@@ -230,6 +231,14 @@ export function AppShell() {
             element={
               <RequireAuth>
                 <RulesPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/analytics"
+            element={
+              <RequireAuth>
+                <Analytics />
               </RequireAuth>
             }
           />
