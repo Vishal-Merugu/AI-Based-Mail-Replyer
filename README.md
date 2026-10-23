@@ -1,70 +1,77 @@
 # AI-Based Mail Replyer
 
-An AI-powered automated email responder built with Node.js, Express, React, BullMQ, and the Groq LLM API.
+A small Gmail automation prototype that classifies incoming email and sends a generated reply. The repository contains an Express API, a separate BullMQ worker, a MongoDB token store, and a simple React client.
 
-## Architecture
+## How it works
 
-This project consists of:
-- **Backend (Node.js/Express)**: Handles Gmail OAuth authentication, receives email webhook notifications via Google Pub/Sub, and manages a BullMQ job queue for processing incoming emails asynchronously.
-- **Queue/Worker**: Processes background tasks, fetches new email threads from Gmail, and calls the Groq API (using the `mixtral-8x7b-32768` model).
-- **LLM Service (Groq)**: Analyzes incoming emails to assign a category ("Interested", "Not Interested", "More Information") and automatically generates an appropriate response which is then dispatched via the Gmail API.
-- **Frontend (React)**: Basic client interface for navigation and potentially future dashboards.
+1. A user connects a Gmail account through Google OAuth.
+2. The backend stores the account tokens in MongoDB and registers a Gmail watch on an inbox topic.
+3. Google Pub/Sub push notifications are posted to the API’s /getMessage endpoint and added to a BullMQ queue.
+4. A separate worker reads the Gmail history, labels incoming messages, asks Groq to classify and draft a response, then sends that response through Gmail.
 
-## Features
-- Gmail OAuth Integration (Offline access, modify and send scopes)
-- Webhooks via Gmail Watch API & Google Cloud Pub/Sub
-- Robust Async Task Processing using BullMQ and Redis
-- Automated categorization and replies using Mixtral 8x7b on Groq
+**Replies are sent automatically by the worker.** Use a test Gmail account first and review the OAuth scopes and generated replies before connecting an account you rely on.
 
-## Prerequisites
-- Node.js & npm
-- Redis (running locally on port 6379, required for BullMQ)
-- MongoDB instance (to store user access/refresh tokens)
-- Google Cloud Console Project (with Gmail API enabled, OAuth client credentials, and a Pub/Sub topic configured)
-- Groq API Key
+## Components
 
-## Setup & Installation
+- backend/src/server.ts — Express API and MongoDB connection
+- backend/src/controllers/emailController.ts — OAuth callback and Pub/Sub notification route
+- backend/src/consumers/ — queue worker and Gmail history/message operations
+- backend/src/services/groqService.ts — classification and reply generation
+- client/ — basic Create React App interface
 
-### Backend
+## Requirements
 
-1. Navigate to the `backend` directory.
-   ```bash
-   cd backend
-   npm install
-   ```
+- Node.js and npm
+- MongoDB
+- Redis available at 127.0.0.1:6379 (the queue connection is configured in code)
+- Google Cloud project with Gmail API, OAuth credentials, and a Pub/Sub topic
+- Groq API key
 
-2. Create a `.env` file based on `.env.example` (or set these variables):
-   - `PORT`: Server port
-   - `MONGO_URL`: MongoDB connection string
-   - `GOOGLE_CLIENT_ID`: OAuth Client ID
-   - `GOOGLE_CLIENT_SECRET`: OAuth Client Secret
-   - `GOOGLE_REDIRECT_URI`: OAuth Redirect URI
-   - `GC_TOPIC_NAME`: Google Cloud Pub/Sub Topic name for Gmail Watch
-   - `GROQ_API_KEY`: Groq API key
+## Configure and run the backend
 
-3. Build and run:
-   ```bash
-   npm run build
-   npm start
-   ```
+The repository does not include a backend environment template. Create backend/.env with these values:
 
-### Frontend
+~~~dotenv
+PORT=5000
+MONGO_URL=mongodb://127.0.0.1:27017/mail_replyer
+GOOGLE_CLIENT_ID=your-google-oauth-client-id
+GOOGLE_CLIENT_SECRET=your-google-oauth-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:5000/redirect
+GC_TOPIC_NAME=projects/your-project/topics/your-topic
+GROQ_API_KEY=your-groq-api-key
+~~~
 
-1. Navigate to the `client` directory.
-   ```bash
-   cd client
-   npm install
-   ```
+Use the exact redirect URL registered with your Google OAuth client. Install and compile the backend:
 
-2. Start the development server:
-   ```bash
-   npm start
-   ```
+~~~bash
+cd backend
+npm install
+npm run build
+~~~
 
-## Project Structure (Backend)
-- `src/controllers/` - Route logic (e.g., Email authorization and redirect)
-- `src/routes/` - Express routing definitions
-- `src/services/` - External API integrations (Groq Chat completion)
-- `src/consumers/` - BullMQ Workers and Gmail API utilities
-- `src/models/` - Mongoose schemas (MailMeta)
-- `src/utils/` - Helpers (OAuth methods, env validation, loggers)
+Run the API and worker in separate terminals from the backend directory:
+
+~~~bash
+node dist/server.js
+~~~
+
+~~~bash
+node dist/consumers/index.js
+~~~
+
+The API listens on PORT. Configure the Pub/Sub push subscription to send notifications to the deployed API’s /getMessage route.
+
+## Run the client
+
+~~~bash
+cd client
+npm install
+npm start
+~~~
+
+## Current limitations and security
+
+- The /getMessage handler currently queues request bodies without verifying Pub/Sub push authentication. Add verification before exposing this route publicly.
+- The Gmail watch is registered during OAuth connection; the code does not include a scheduled renewal process.
+- The worker sends generated replies directly. There is no human approval step or reply preview in the current flow.
+- The backend package has no configured test suite or start script; use the build and explicit API/worker commands above.
